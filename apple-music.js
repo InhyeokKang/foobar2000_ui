@@ -448,7 +448,7 @@ function TopBar() {
             function (x, y) { showPlaylistMenu(x, y); }),
         new Button('gear',
             function () { return ['gear', self.hover === 'gear' ? colours.text : colours.sub]; },
-            function (x, y) { showPanelMenu(x, y); })
+            function (x, y) { openPreferences(x, y); })
     ];
 }
 
@@ -1285,6 +1285,22 @@ function disposeMenus(built) {
     }
 }
 
+// The gear opens foobar2000's own Preferences — the Ctrl+P dialog.
+// Command paths differ between builds, so try the likely ones and never
+// leave the button doing nothing.
+function openPreferences(x, y) {
+    var paths = ['File/Preferences', 'Preferences'];
+    for (var i = 0; i < paths.length; i++) {
+        try {
+            var r = fb.RunMainMenuCommand(paths[i]);
+            if (r !== false) return true;      // true, or a build that returns nothing
+        } catch (e) {}
+    }
+    console.log('Studio: Preferences 명령을 찾지 못했습니다');
+    showPanelMenu(x, y);
+    return false;
+}
+
 // Just the playlists, for the top bar and the queue buttons.
 function showPlaylistMenu(x, y) {
     var menu = null;
@@ -1394,7 +1410,16 @@ function on_mouse_rbtn_up(x, y) {
     return showPanelMenu(x, y);
 }
 
-function on_key_down(vkey) { if (panel.key) panel.key(vkey); }
+var VK_CONTROL = 0x11, VK_P = 0x50;
+
+function on_key_down(vkey) {
+    if (vkey === VK_P) {
+        var ctrl = false;
+        try { ctrl = utils.IsKeyPressed(VK_CONTROL); } catch (e) {}
+        if (ctrl) { openPreferences(px(20), px(20)); return; }
+    }
+    if (panel.key) panel.key(vkey);
+}
 
 // ------------------------------------------------------- DRAG AND DROP ----
 
