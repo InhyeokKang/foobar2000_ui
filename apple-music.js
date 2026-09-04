@@ -390,10 +390,29 @@ function paintPage(gr, x, y, w, h) {
 
 // -------------------------------------------------------- TRANSPORT STATE ---
 
-function isShuffle() { return fb.PlaybackOrder >= 3; }
-function repeatMode() { var o = fb.PlaybackOrder; return o === 1 ? 1 : (o === 2 ? 2 : 0); }
-function toggleShuffle() { fb.PlaybackOrder = isShuffle() ? 0 : 4; }
-function cycleRepeat() { var r = repeatMode(); fb.PlaybackOrder = r === 0 ? 1 : (r === 1 ? 2 : 0); }
+// Playback order lives on plman, not fb.
+//   0 default · 1 repeat playlist · 2 repeat track · 3 random · 4+ shuffle
+function playbackOrder() {
+    try { return plman.PlaybackOrder; } catch (e) { return 0; }
+}
+
+function setPlaybackOrder(v) {
+    try { plman.PlaybackOrder = v; } catch (e) { console.log('Studio: 재생 순서 변경 실패 - ' + e); }
+}
+
+function isShuffle() { return playbackOrder() >= 3; }
+
+function repeatMode() {
+    var o = playbackOrder();
+    return o === 1 ? 1 : (o === 2 ? 2 : 0);
+}
+
+function toggleShuffle() { setPlaybackOrder(isShuffle() ? 0 : 4); }
+
+function cycleRepeat() {
+    var r = repeatMode();
+    setPlaybackOrder(r === 0 ? 1 : (r === 1 ? 2 : 0));
+}
 
 function volumeToPos() { return clamp(Math.pow(2, fb.Volume / 10), 0, 1); }
 function posToVolume(p) {
@@ -437,6 +456,13 @@ Button.prototype.paint = function (gr, scale) {
 function hitButtons(list, x, y) {
     for (var i = 0; i < list.length; i++) if (list[i].hit(x, y)) return list[i];
     return null;
+}
+
+// An uncaught throw in a click handler shows foobar2000's modal error box.
+// Nothing a button does is worth that; log it and carry on.
+function runAction(fn, x, y) {
+    try { fn(x, y); }
+    catch (e) { console.log('Studio: 동작 실패 - ' + e); }
 }
 
 // ---------------------------------------------------------------- TOP BAR ---
@@ -507,7 +533,7 @@ TopBar.prototype.leave = function () { if (this.hover) { this.hover = ''; window
 
 TopBar.prototype.up = function (x, y) {
     var b = hitButtons(this.buttons, x, y);
-    if (b) { b.action(x, y); return; }
+    if (b) { runAction(b.action, x, y); return; }
     if (this.hitTest(x, y) === 'name') showPlaylistMenu(x, y);
 };
 
@@ -607,7 +633,7 @@ ArtCard.prototype.move = function (x, y) {
 ArtCard.prototype.leave = function () { if (this.hover) { this.hover = ''; window.Repaint(); } };
 ArtCard.prototype.up = function (x, y) {
     var b = hitButtons(this.buttons, x, y);
-    if (b) { b.action(); window.Repaint(); }
+    if (b) { runAction(b.action, x, y); window.Repaint(); }
 };
 ArtCard.prototype.tick = function () { this.phase++; };
 
@@ -1073,7 +1099,7 @@ BottomBar.prototype.up = function (x, y) {
     }
     if (this.dragVol) { this.dragVol = false; window.Repaint(); return; }
     var b = hitButtons(this.buttons, x, y);
-    if (b) b.action(x, y);
+    if (b) runAction(b.action, x, y);
 };
 
 BottomBar.prototype.dblclick = function (x, y) {
@@ -1306,14 +1332,9 @@ function disposeMenus(built) {
 // Command paths differ between builds, so try the likely ones and never
 // leave the button doing nothing.
 function openPreferences(x, y) {
-    var paths = ['File/Preferences', 'Preferences'];
-    for (var i = 0; i < paths.length; i++) {
-        try {
-            var r = fb.RunMainMenuCommand(paths[i]);
-            if (r !== false) return true;      // true, or a build that returns nothing
-        } catch (e) {}
-    }
-    console.log('Studio: Preferences 명령을 찾지 못했습니다');
+    try { fb.ShowPreferences(); return true; } catch (e) {}
+    try { if (fb.RunMainMenuCommand('File/Preferences') !== false) return true; } catch (e) {}
+    console.log('Studio: 설정 창을 열지 못했습니다');
     showPanelMenu(x, y);
     return false;
 }
