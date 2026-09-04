@@ -1645,13 +1645,58 @@ function setMode(mode) {
     window.Repaint();
 }
 
-var CONTEXT_BASE = 1000;
+var CONTEXT_BASE = 200000;
+var MAIN_MENU_SPAN = 10000;
+var MAIN_MENUS = [
+    { name: 'View', base: 10000 },
+    { name: 'Playback', base: 20000 },
+    { name: 'Library', base: 30000 },
+    { name: 'File', base: 40000 },
+    { name: 'Edit', base: 50000 }
+];
+
+// foobar2000's own menus, embedded in ours. Handy when the menu bar is
+// hidden — and it shows what this particular install actually has, rather
+// than what a guide assumes it has.
+function appendMainMenus(parent, built) {
+    var sub = window.CreatePopupMenu();
+    for (var i = 0; i < MAIN_MENUS.length; i++) {
+        var m = MAIN_MENUS[i];
+        try {
+            var mm = fb.CreateMainMenuManager(m.name);
+            var popup = window.CreatePopupMenu();
+            mm.BuildMenu(popup, m.base);
+            popup.AppendTo(sub, MF_STRING, m.name);
+            built.push({ mm: mm, popup: popup, base: m.base });
+        } catch (e) {}
+    }
+    sub.AppendTo(parent, MF_STRING, 'foobar2000 메뉴');
+    built.push({ popup: sub });
+}
+
+function runMainMenu(built, id) {
+    for (var i = 0; i < built.length; i++) {
+        var b = built[i];
+        if (b.mm && id >= b.base && id < b.base + MAIN_MENU_SPAN) {
+            try { b.mm.ExecuteByID(id - b.base); } catch (e) {}
+            return true;
+        }
+    }
+    return false;
+}
+
+function disposeMenus(built) {
+    for (var i = 0; i < built.length; i++) {
+        try { if (built[i].mm) built[i].mm.Dispose(); } catch (e) {}
+        try { if (built[i].popup) built[i].popup.Dispose(); } catch (e) {}
+    }
+}
 
 // One menu for everything: the track commands when the click landed on a
 // track, then this panel's own options underneath. That way the panel
 // options are reachable from anywhere in the panel.
 function showPanelMenu(x, y, cmm) {
-    var menu = null, theme = null, mode = null;
+    var menu = null, theme = null, mode = null, built = [];
     try {
         menu = window.CreatePopupMenu();
         theme = window.CreatePopupMenu();
@@ -1678,11 +1723,14 @@ function showPanelMenu(x, y, cmm) {
         mode.AppendTo(menu, MF_STRING, '패널 모드');
 
         menu.AppendMenuSeparator();
+        appendMainMenus(menu, built);
+        menu.AppendMenuSeparator();
         menu.AppendMenuItem(MF_STRING, 20, 'Apple Music 패널 속성…');
         menu.AppendMenuItem(MF_STRING, 21, 'Apple Music 스크립트 편집…');
 
         var id = menu.TrackPopupMenu(x, y);
         if (cmm && id >= CONTEXT_BASE) cmm.ExecuteByID(id - CONTEXT_BASE);
+        else if (runMainMenu(built, id)) { /* foobar2000 handled it */ }
         else if (id === 1) applyTheme('dark');
         else if (id === 2) applyTheme('light');
         else if (id >= 10 && id < 10 + modes.length) setMode(modes[id - 10]);
@@ -1693,6 +1741,7 @@ function showPanelMenu(x, y, cmm) {
         console.log('Apple Music menu: ' + e);
         return false;
     } finally {
+        disposeMenus(built);
         try { if (theme) theme.Dispose(); } catch (e2) {}
         try { if (mode) mode.Dispose(); } catch (e2) {}
         try { if (menu) menu.Dispose(); } catch (e2) {}
