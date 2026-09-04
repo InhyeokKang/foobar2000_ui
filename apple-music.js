@@ -1049,21 +1049,20 @@ Playlist.prototype.dblclick = function (x, y) {
 
 Playlist.prototype.contextMenu = function (x, y) {
     var i = this.rowAt(y);
-    if (i < 0) return false;
+    if (i < 0) return false;                 // header or empty space: panel menu
+    var cmm = null;
     try {
         if (!plman.IsPlaylistItemSelected(this.pl, i)) {
             plman.ClearPlaylistSelection(this.pl);
             plman.SetPlaylistSelectionSingle(this.pl, i, true);
             plman.SetPlaylistFocusItem(this.pl, i);
         }
-        var cmm = fb.CreateContextMenuManager();
-        var menu = window.CreatePopupMenu();
+        cmm = fb.CreateContextMenuManager();
         cmm.InitContext(plman.GetPlaylistSelectedItems(this.pl));
-        cmm.BuildMenu(menu, 1);
-        var id = menu.TrackPopupMenu(x, y);
-        if (id > 0) cmm.ExecuteByID(id - 1);
-        return true;
-    } catch (e) { return false; }
+    } catch (e) { cmm = null; }
+    var shown = showPanelMenu(x, y, cmm);
+    try { if (cmm && cmm.Dispose) cmm.Dispose(); } catch (e) {}
+    return shown;
 };
 
 Playlist.prototype.ensureVisible = function (i) {
@@ -1237,11 +1236,22 @@ function setMode(mode) {
     window.Repaint();
 }
 
-function showPanelMenu(x, y) {
+var CONTEXT_BASE = 1000;
+
+// One menu for everything: the track commands when the click landed on a
+// track, then this panel's own options underneath. That way the panel
+// options are reachable from anywhere in the panel.
+function showPanelMenu(x, y, cmm) {
+    var menu = null, theme = null, mode = null;
     try {
-        var menu = window.CreatePopupMenu();
-        var theme = window.CreatePopupMenu();
-        var mode = window.CreatePopupMenu();
+        menu = window.CreatePopupMenu();
+        theme = window.CreatePopupMenu();
+        mode = window.CreatePopupMenu();
+
+        if (cmm) {
+            cmm.BuildMenu(menu, CONTEXT_BASE);
+            menu.AppendMenuSeparator();
+        }
 
         theme.AppendMenuItem(MF_STRING, 1, '다크');
         theme.AppendMenuItem(MF_STRING, 2, '라이트');
@@ -1259,17 +1269,25 @@ function showPanelMenu(x, y) {
         mode.AppendTo(menu, MF_STRING, '패널 모드');
 
         menu.AppendMenuSeparator();
-        menu.AppendMenuItem(MF_STRING, 20, '패널 속성…');
-        menu.AppendMenuItem(MF_STRING, 21, '스크립트 편집…');
+        menu.AppendMenuItem(MF_STRING, 20, 'Apple Music 패널 속성…');
+        menu.AppendMenuItem(MF_STRING, 21, 'Apple Music 스크립트 편집…');
 
         var id = menu.TrackPopupMenu(x, y);
-        if (id === 1) applyTheme('dark');
+        if (cmm && id >= CONTEXT_BASE) cmm.ExecuteByID(id - CONTEXT_BASE);
+        else if (id === 1) applyTheme('dark');
         else if (id === 2) applyTheme('light');
         else if (id >= 10 && id < 10 + modes.length) setMode(modes[id - 10]);
         else if (id === 20) window.ShowProperties();
         else if (id === 21) window.ShowConfigure();
         return true;
-    } catch (e) { return false; }
+    } catch (e) {
+        console.log('Apple Music menu: ' + e);
+        return false;
+    } finally {
+        try { if (theme) theme.Dispose(); } catch (e2) {}
+        try { if (mode) mode.Dispose(); } catch (e2) {}
+        try { if (menu) menu.Dispose(); } catch (e2) {}
+    }
 }
 
 // ------------------------------------------------------------- CALLBACKS ----
