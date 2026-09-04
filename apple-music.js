@@ -1092,6 +1092,139 @@ Playlist.prototype.key = function (vkey) {
     }
 };
 
+// ---------------------------------------------------------------- SIDEBAR ---
+//  What Apple Music actually puts on the left: the playlists. Click one to
+//  switch to it. When there is spare height, the now playing artwork fills
+//  the bottom of the column.
+
+function Sidebar() {
+    this.hoverRow = -1;
+    this.scroll = 0;
+    this.rowH = px(30);
+    this.lists = [];
+    this.art = { raw: null, sized: {} };
+    this.refresh();
+}
+
+Sidebar.prototype.refresh = function () {
+    this.lists = [];
+    try {
+        var n = plman.PlaylistCount;
+        for (var i = 0; i < n; i++) {
+            this.lists.push({ idx: i, name: plman.GetPlaylistName(i), count: plman.GetPlaylistItemCount(i) });
+        }
+        this.active = plman.ActivePlaylist;
+    } catch (e) { this.active = -1; }
+};
+
+Sidebar.prototype.setTrack = function (handle) {
+    this.metadb = handle;
+    this.art.raw = getArt(handle);
+    this.art.sized = {};
+};
+
+Sidebar.prototype.artwork = function (size) {
+    if (!this.art.raw || size < 4) return null;
+    size = Math.round(size);
+    if (this.art.sized[size] === undefined) this.art.sized[size] = squareImage(this.art.raw, size);
+    return this.art.sized[size];
+};
+
+Sidebar.prototype.setViewport = function (x, y, w, h) {
+    this.ox = x; this.oy = y;
+    this.layout(w, h);
+};
+
+Sidebar.prototype.layout = function (W, H) {
+    this.W = W; this.H = H;
+    if (this.ox === undefined) { this.ox = 0; this.oy = 0; }
+    this.pad = px(14);
+    this.headerH = px(34);
+    this.listTop = this.oy + this.headerH;
+    var need = this.lists.length * this.rowH;
+    var artSide = Math.min(W - this.pad * 2, px(260));
+    var spare = H - this.headerH - need - px(20);
+    // only show the artwork if it does not squeeze the playlists
+    this.artSize = (spare > artSide * 0.75 && artSide > px(90)) ? artSide : 0;
+    this.listH = H - this.headerH - (this.artSize ? this.artSize + px(52) : 0);
+};
+
+Sidebar.prototype.rowAt = function (y) {
+    if (y < this.listTop || y >= this.listTop + this.listH) return -1;
+    var i = Math.floor((y - this.listTop + this.scroll) / this.rowH);
+    return (i >= 0 && i < this.lists.length) ? i : -1;
+};
+
+Sidebar.prototype.paint = function (gr) {
+    var x0 = this.ox, y0 = this.oy, W = this.W, pad = this.pad;
+    gr.FillRectangle(x0, y0, W, this.H, colours.bg);
+
+    drawText(gr, '재생목록', fonts.small, colours.sub,
+        x0 + pad, y0 + px(6), W - pad * 2, px(22), TEXT_LEFT);
+
+    var visible = Math.ceil(this.listH / this.rowH);
+    var first = Math.max(0, Math.floor(this.scroll / this.rowH));
+    for (var n = 0; n < visible; n++) {
+        var i = first + n;
+        if (i >= this.lists.length) break;
+        var pl = this.lists[i];
+        var y = this.listTop + i * this.rowH - this.scroll;
+        if (y + this.rowH > this.listTop + this.listH + 1) break;
+        var current = pl.idx === this.active;
+        if (current || this.hoverRow === i) {
+            fillRound(gr, x0 + px(6), y + px(1), W - px(12), this.rowH - px(3), px(6),
+                current ? colours.sel : colours.hover);
+        }
+        drawText(gr, pl.name, fonts.body, current ? ACCENT : colours.text,
+            x0 + pad, y, W - pad * 2 - px(30), this.rowH, TEXT_LEFT);
+        drawText(gr, '' + pl.count, fonts.tiny, colours.sub,
+            x0 + W - pad - px(28), y, px(28), this.rowH, TEXT_RIGHT);
+    }
+
+    if (this.artSize > 0) {
+        var ax = x0 + Math.round((W - this.artSize) / 2);
+        var ay = y0 + this.H - this.artSize - px(44);
+        if (!drawArt(gr, this.artwork(this.artSize), ax, ay, this.artSize, px(8))) {
+            fillRound(gr, ax, ay, this.artSize, this.artSize, px(8), colours.card);
+            drawIcon(gr, 'note', ax + this.artSize / 2, ay + this.artSize / 2, this.artSize * 0.22, colours.sub);
+        }
+        var title = this.metadb ? evalTf(tf.title, this.metadb) : '';
+        var artist = this.metadb ? evalTf(tf.artist, this.metadb) : '';
+        drawText(gr, title, fonts.title, colours.text,
+            x0 + pad, ay + this.artSize + px(6), W - pad * 2, px(19), TEXT_CENTRE);
+        drawText(gr, artist, fonts.small, colours.sub,
+            x0 + pad, ay + this.artSize + px(24), W - pad * 2, px(16), TEXT_CENTRE);
+    }
+};
+
+Sidebar.prototype.move = function (x, y) {
+    var i = this.rowAt(y);
+    if (i !== this.hoverRow) {
+        this.hoverRow = i;
+        window.SetCursor(i >= 0 ? IDC_HAND : IDC_ARROW);
+        window.Repaint();
+    }
+};
+
+Sidebar.prototype.leave = function () {
+    if (this.hoverRow !== -1) { this.hoverRow = -1; window.Repaint(); }
+};
+
+Sidebar.prototype.up = function (x, y) {
+    var i = this.rowAt(y);
+    if (i >= 0) {
+        try { plman.ActivePlaylist = this.lists[i].idx; } catch (e) {}
+        this.active = this.lists[i].idx;
+        window.Repaint();
+    }
+};
+
+Sidebar.prototype.wheel = function (step) {
+    var max = Math.max(0, this.lists.length * this.rowH - this.listH);
+    this.scroll = clamp(this.scroll - step * this.rowH * 2, 0, max);
+    window.Repaint();
+};
+
 // -------------------------------------------------------------- COMPOSITE ---
 //  Default UI starts life as a single area, and splitting it up is fiddly.
 //  This mode puts the whole thing — transport bar, now playing, track list —
@@ -1099,7 +1232,7 @@ Playlist.prototype.key = function (vkey) {
 
 function Composite() {
     this.bar = new Player(true);
-    this.player = new Player(false);
+    this.side = new Sidebar();
     this.list = new Playlist();
     this.parts = [];
     this.captured = null;
@@ -1110,14 +1243,14 @@ Composite.prototype.layout = function (W, H) {
     this.W = W; this.H = H;
     var barH = clamp(Math.round(H * 0.15), px(58), px(92));
     if (H < px(300)) barH = Math.max(px(46), Math.round(H * 0.26));
-    var sideW = W >= px(620) ? clamp(Math.round(W * 0.29), px(240), px(360)) : 0;
+    var sideW = W >= px(620) ? clamp(Math.round(W * 0.24), px(190), px(280)) : 0;
     this.barH = barH; this.sideW = sideW;
 
     this.bar.setViewport(0, 0, W, barH);
     if (sideW > 0) {
-        this.player.setViewport(0, barH + 1, sideW, H - barH - 1);
+        this.side.setViewport(0, barH + 1, sideW, H - barH - 1);
         this.list.setViewport(sideW + 1, barH + 1, W - sideW - 1, H - barH - 1);
-        this.parts = [this.bar, this.player, this.list];
+        this.parts = [this.bar, this.side, this.list];
     } else {
         this.list.setViewport(0, barH + 1, W, H - barH - 1);
         this.parts = [this.bar, this.list];
@@ -1183,12 +1316,17 @@ Composite.prototype.contextMenu = function (x, y) {
 };
 
 Composite.prototype.key = function (vkey) { this.list.key(vkey); };
-Composite.prototype.refresh = function () { this.list.refresh(); };
+
+Composite.prototype.refresh = function () {
+    this.list.refresh();
+    this.side.refresh();
+    this.layout(this.W, this.H);
+};
 Composite.prototype.artDone = function (metadb, image) { this.list.artDone(metadb, image); };
 
 Composite.prototype.setTrack = function (handle) {
     this.bar.setTrack(handle);
-    this.player.setTrack(handle);
+    this.side.setTrack(handle);
 };
 
 Composite.prototype.tick = function () {
