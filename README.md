@@ -195,7 +195,37 @@ Splitter (vertical)
 | 리스트 우클릭 | foobar2000 기본 컨텍스트 메뉴 (태그, 변환 등 전부 사용 가능) |
 | 앨범아트 더블클릭 | 재생 중인 곡으로 이동 |
 
-## 6. 마무리 손질 (선택)
+## 6. 창 전체를 이 UI로 — Columns UI
+
+Default UI에는 **상태바를 끄는 기능이 없습니다.** (v2.24에서 `View` 메뉴, `Preferences` →
+`Display` → `Default User Interface` 양쪽 다 확인) 툴바도 마찬가지입니다.
+
+창을 이 스크립트만 남기고 비우려면 **Columns UI**로 바꾸면 됩니다. 테마를 덮어쓰는 게 아니라
+foobar2000의 **UI 모듈 자체를 교체**하는 공식 확장입니다.
+
+- 다운로드: [reupen/columns_ui releases](https://github.com/reupen/columns_ui/releases)
+  (`foo_ui_columns-3.6.0.x86-x64.fb2k-component`, 파일 하나에 32·64비트 모두 포함,
+  SHA-256 `7381a79feced139f9f7f4a18d6efac5d71df6336587f1491393318a3945cae09`)
+- `install.bat`이 설치 여부를 물어보고, 받은 뒤 위 해시와 대조합니다
+  (`install.bat -ColumnsUI` 로 물어보지 않고 바로 설치)
+
+설치하면 `Preferences` → `Display` → `Columns UI` 아래에 탭들이 생깁니다.
+3.6.0 패키지의 DLL에서 직접 확인한 항목입니다:
+
+| 항목 | 하는 일 |
+|------|---------|
+| **`Show status bar`** | 상태바 표시 여부 — **Default UI에 없던 그 옵션** |
+| **`Show toolbars`** | 툴바 표시 여부 |
+| `Layout` 탭 | 패널 배치. `Add panel` 로 **JScript Panel** 을 넣습니다 |
+| `Colours` / `Artwork` / `Global` 탭 | 색·앨범아트·전역 설정 |
+
+**스크립트는 그대로 씁니다.** UI 종류에 의존하는 API를 하나도 쓰지 않아서
+Default UI든 Columns UI든 똑같이 동작합니다. 레이아웃만 Columns UI 쪽에서 다시 잡으면 됩니다.
+
+> Columns UI 쪽 화면 구성은 제가 직접 확인하지 못했습니다. `Layout` 탭까지 가서
+> 막히면 화면을 보여주세요 — 그때부터 정확히 안내하겠습니다.
+
+## 7. 마무리 손질 (선택)
 
 Apple Music처럼 보이게 하려면 패널 밖의 요소도 정리하면 좋습니다.
 
@@ -203,10 +233,10 @@ Apple Music처럼 보이게 하려면 패널 밖의 요소도 정리하면 좋�
   `#FFFFFF`(라이트)로 맞추면 패널 경계가 보이지 않습니다.
 - 남아 있는 상단 툴바(재생 버튼·탐색바)는 툴바 영역에서 우클릭하면 켜고 끌 수 있습니다.
   스크립트가 같은 기능을 이미 그리므로 꺼도 됩니다.
-- **상태바는 v2.24의 `View` 메뉴에 토글이 없습니다.** (View에는 Always on Top /
-  Visualizations / DSP / Console / Internet Radio / Playlist Manager / Layout 뿐)
-  `Preferences` → `Display` → `Default User Interface`에도 상태바의 *내용* 서식만 있고
-  표시 여부 옵션은 없습니다. 끄는 방법은 아직 확인하지 못했습니다.
+- **`Default Playlist` 탭 바**는 지울 수 있습니다. 레이아웃 편집 모드를 켜고
+  탭 바에서 우클릭 → **`Cut UI Element`**.
+- **상태바는 Default UI에서 끌 수 없습니다.** (v2.24의 `View` 메뉴에도, DUI 설정
+  페이지에도 토글이 없습니다) 끄려면 위 6번의 Columns UI로 가야 합니다.
 - Columns UI 사용 시 `Preferences` → `Display` → `Columns UI` → `Main`에서
   Toolbar/Status bar를 모두 끄면 창 전체가 패널만 남습니다.
 - Windows 11의 둥근 창 모서리 + 다크 타이틀바와 잘 어울립니다.

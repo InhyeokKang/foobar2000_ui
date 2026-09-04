@@ -14,7 +14,8 @@
 param(
     [string] $Fb2kPath,          # foobar2000.exe 경로를 직접 지정할 때
     [switch] $SkipFont,
-    [switch] $SkipComponent
+    [switch] $SkipComponent,
+    [switch] $ColumnsUI          # 물어보지 않고 Columns UI까지 설치
 )
 
 $ErrorActionPreference = 'Continue'
@@ -260,6 +261,57 @@ if ($SkipComponent) {
     } else {
         Say '   찾지 못했습니다. 내려받은 .fb2k-component 파일을 두 번 눌러 설치하세요.' Yellow
         Note '컴포넌트' '수동 설치 필요'
+    }
+}
+
+# --------------------------------------------------------------- Columns UI --
+#  Default UI에는 상태바를 끄는 기능이 없다. Columns UI는 UI 모듈 자체를
+#  교체하는 공식 확장이고, 'Show status bar' / 'Show toolbars' 옵션이 있다.
+#  (3.6.0 패키지의 DLL에서 두 문자열을 직접 확인했다)
+
+Head '5. Columns UI (선택)'
+$cuiInstalled = $false
+foreach ($cd in $componentDirs) {
+    if (Get-ChildItem -LiteralPath $cd.FullName -Recurse -Filter 'foo_ui_columns.dll' -ErrorAction SilentlyContinue) {
+        $cuiInstalled = $true
+    }
+}
+if ($cuiInstalled) {
+    Say '   이미 설치되어 있습니다.' Green
+    Note 'Columns UI' '이미 설치됨'
+} else {
+    $want = $ColumnsUI
+    if (-not $want) {
+        Say '   Default UI는 상태바와 툴바를 끌 수 없습니다.' DarkGray
+        Say '   Columns UI로 바꾸면 창을 이 스크립트만 남기고 비울 수 있습니다.' DarkGray
+        Say '   (스크립트는 그대로 쓰고, 레이아웃만 다시 잡으면 됩니다)' DarkGray
+        $answer = Read-Host '   설치할까요? [y/N]'
+        $want = ($answer -eq 'y' -or $answer -eq 'Y')
+    }
+    if (-not $want) {
+        Say '   건너뜁니다.' DarkGray
+        Note 'Columns UI' '건너뜀'
+    } else {
+        $cuiUrl = 'https://github.com/reupen/columns_ui/releases/download/v3.6.0/foo_ui_columns-3.6.0.x86-x64.fb2k-component'
+        $cuiHash = '7381A79FECED139F9F7F4A18D6EFAC5D71DF6336587F1491393318A3945CAE09'
+        $cuiFile = Join-Path $env:TEMP 'foo_ui_columns-3.6.0.x86-x64.fb2k-component'
+        try {
+            Invoke-WebRequest -Uri $cuiUrl -OutFile $cuiFile -UseBasicParsing -TimeoutSec 180
+            $h = (Get-FileHash -LiteralPath $cuiFile -Algorithm SHA256).Hash
+            if ($h -eq $cuiHash) {
+                Say "   해시 일치 ($($h.Substring(0,16))...)" Green
+                Say '   설치 창이 뜨면 [Yes] / [예] 를 누르세요.' White
+                Start-Process -FilePath $cuiFile
+                Note 'Columns UI' 'foobar2000 설치기로 넘김'
+            } else {
+                Say '   해시가 달라 설치하지 않습니다.' Red
+                Remove-Item $cuiFile -Force -ErrorAction SilentlyContinue
+                Note 'Columns UI' '해시 불일치'
+            }
+        } catch {
+            Say "   내려받기 실패: $($_.Exception.Message)" Yellow
+            Note 'Columns UI' '실패'
+        }
     }
 }
 
