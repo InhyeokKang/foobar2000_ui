@@ -1,7 +1,7 @@
 <title>Apple Music UI for foobar2000</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;500;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
   :root {
     --ground: #f6f4f4;
@@ -12,7 +12,7 @@
     --accent: #fa243c;
     --accent-soft: rgba(250, 36, 60, .09);
     --shadow: 0 24px 60px -28px rgba(26, 22, 25, .45);
-    --sans: "Archivo", "Noto Sans KR", system-ui, sans-serif;
+    --sans: "Gothic A1", "Pretendard Variable", "Pretendard", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
     --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
   }
   :root:not([data-theme="light"]) {
@@ -65,9 +65,9 @@
   .eyebrow b { color: var(--accent); font-weight: 500; }
   h1 {
     font-size: clamp(34px, 5.4vw, 58px);
-    font-weight: 700;
-    letter-spacing: -.035em;
-    line-height: 1.04;
+    font-weight: 800;
+    letter-spacing: -.032em;
+    line-height: 1.12;
     margin: 0 0 18px;
     text-wrap: balance;
   }
@@ -169,12 +169,12 @@
     color: var(--accent); background: var(--accent-soft);
     padding: 3px 8px; border-radius: 5px;
   }
-  .mode h3 { font-size: 16px; font-weight: 600; margin: 14px 0 6px; letter-spacing: -.01em; }
+  .mode h3 { font-size: 16px; font-weight: 700; margin: 14px 0 6px; letter-spacing: -.01em; }
   .mode p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.6; }
 
   /* ---------- try it ---------- */
   .cols { display: grid; grid-template-columns: 1.05fr 1fr; gap: 48px; margin-top: 56px; }
-  h2 { font-size: 20px; font-weight: 700; letter-spacing: -.02em; margin: 0 0 18px; }
+  h2 { font-size: 20px; font-weight: 800; letter-spacing: -.018em; margin: 0 0 18px; }
   .gestures { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 10px 18px; align-items: baseline; }
   .gestures dt { font-family: var(--mono); font-size: 12px; color: var(--ink); white-space: nowrap; }
   .gestures dd { margin: 0; color: var(--muted); font-size: 14px; }
@@ -512,7 +512,7 @@ var props = {
     scale:     window.GetProperty('Apple Music.Scale %', 100),
     rowHeight: window.GetProperty('Apple Music.List row height', 46),
     rowArt:    window.GetProperty('Apple Music.List artwork', true),
-    fontFace:  window.GetProperty('Apple Music.Font', 'SF Pro Display, SF Pro Text, Pretendard, Apple SD Gothic Neo, Segoe UI Variable Display, Segoe UI, Malgun Gothic')
+    fontFace:  window.GetProperty('Apple Music.Font', 'Pretendard Variable, Pretendard, SUIT, Wanted Sans, Apple SD Gothic Neo, SF Pro Display, Segoe UI Variable Display, Segoe UI, Malgun Gothic')
 };
 
 function setProp(name, value) { window.SetProperty(name, value); }
@@ -1608,7 +1608,9 @@ return {
    ============================================================ */
 (function () {
   var DPR = Math.min(window.devicePixelRatio || 1, 2);
-  var STACK = '"Segoe UI Variable Display", -apple-system, "Segoe UI", system-ui, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif';
+  // Pretendard if the viewer has it installed (that is what the panel asks for
+  // first); otherwise Gothic A1, which this page loads.
+  var STACK = '"Pretendard Variable", "Pretendard", "Gothic A1", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
 
   function argb(c) {
     c = c >>> 0;
@@ -1887,7 +1889,7 @@ return {
   };
 
   var utils = {
-    CheckFont: function (n) { return n === 'SF Pro Display'; },
+    CheckFont: function (n) { return n === 'Pretendard Variable'; },
     GetAlbumArtV2: function (h) { return h ? h.art : null; }
   };
 
@@ -2013,6 +2015,11 @@ return {
   makeHost(document.getElementById('cv-player'), 'player');
   makeHost(document.getElementById('cv-list'), 'list');
   core.each('on_playback_new_track', core.handle());
+
+  // canvas text is measured at paint time, so repaint once the webfont lands
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(function () { core.dirty(); });
+  }
 
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     core.paused = true;

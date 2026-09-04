@@ -225,7 +225,7 @@ var props = {
     scale:     window.GetProperty('Apple Music.Scale %', 100),
     rowHeight: window.GetProperty('Apple Music.List row height', 46),
     rowArt:    window.GetProperty('Apple Music.List artwork', true),
-    fontFace:  window.GetProperty('Apple Music.Font', 'SF Pro Display, SF Pro Text, Pretendard, Apple SD Gothic Neo, Segoe UI Variable Display, Segoe UI, Malgun Gothic')
+    fontFace:  window.GetProperty('Apple Music.Font', 'Pretendard Variable, Pretendard, SUIT, Wanted Sans, Apple SD Gothic Neo, SF Pro Display, Segoe UI Variable Display, Segoe UI, Malgun Gothic')
 };
 
 function setProp(name, value) { window.SetProperty(name, value); }

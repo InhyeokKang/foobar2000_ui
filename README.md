@@ -74,14 +74,32 @@ Splitter (vertical)
 | `Apple Music.Scale %` | `100` | 고DPI 화면에서 키우기 (예: 150) |
 | `Apple Music.List row height` | `46` | 리스트 행 높이. 34 이하로 내리면 한 줄 컴팩트 모드 |
 | `Apple Music.List artwork` | `true` | 리스트에 앨범 썸네일 표시 |
-| `Apple Music.Font` | `SF Pro Display, ...` | 쉼표로 나열한 폰트 우선순위. **설치된 첫 번째 폰트**를 사용 |
+| `Apple Music.Font` | `Pretendard, ...` | 쉼표로 나열한 폰트 우선순위. **설치된 첫 번째 폰트**를 사용 |
 
 > 속성 값을 바꾼 뒤에는 패널을 새로고침해야 반영됩니다
 > (`Configure...` 창을 열고 `Apply`를 다시 누르거나 foobar2000 재시작).
+>
+> 이미 패널을 만든 뒤라면 **속성에 저장된 예전 값이 그대로 남습니다.** 스크립트를 새로
+> 붙여넣어도 폰트가 안 바뀐다면, 패널 속성에서 `Apple Music.Font` 값을 직접 고치세요.
 
-**폰트 추천** — Apple Music 느낌을 제대로 내려면 [SF Pro](https://developer.apple.com/fonts/)
-(Apple 개발자 사이트, 무료) 또는 한글까지 예쁜 [Pretendard](https://github.com/orioncactus/pretendard)를
-설치하세요. 없으면 자동으로 Segoe UI / 맑은 고딕으로 떨어집니다.
+### 폰트
+
+기본값은 **[Pretendard](https://github.com/orioncactus/pretendard/releases)** 입니다.
+한글과 영문의 굵기·너비가 잘 맞는 요즘 고딕이라, Apple Music의 SF Pro 자리에 그대로 놓기 좋습니다.
+**설치를 권장합니다** — 없으면 맑은 고딕으로 떨어지면서 인상이 확 달라집니다.
+
+설치: 최신 릴리스의 `Pretendard-*.zip` → 압축 해제 → `public/variable/PretendardVariable.ttf`
+(또는 `public/static/` 안의 원하는 굵기들) → 파일 우클릭 → **설치** → foobar2000 재시작
+
+취향에 따라 `Apple Music.Font` 속성 값을 바꿔 다른 고딕을 쓸 수도 있습니다.
+쉼표로 나열하면 **설치되어 있는 첫 번째 것**을 씁니다.
+
+| 대안 | 인상 |
+|------|------|
+| [SUIT](https://sunn.us/suit/) | Pretendard보다 조금 더 둥글고 부드러움 |
+| [Wanted Sans](https://github.com/wanteddev/wanted-sans) | 각지고 또렷함, 숫자가 시원함 |
+| [SF Pro](https://developer.apple.com/fonts/) | Apple 정품. 한글은 Apple SD Gothic Neo로 넘어감 |
+| Apple SD Gothic Neo | macOS 기본. 별도 설치 없이 가장 Apple에 가까움 |
 
 ## 5. 조작
 
