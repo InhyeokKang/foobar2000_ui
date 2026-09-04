@@ -209,21 +209,40 @@ foobar2000의 **UI 모듈 자체를 교체**하는 공식 확장입니다.
 - `install.bat`이 설치 여부를 물어보고, 받은 뒤 위 해시와 대조합니다
   (`install.bat -ColumnsUI` 로 물어보지 않고 바로 설치)
 
-설치하면 `Preferences` → `Display` → `Columns UI` 아래에 탭들이 생깁니다.
-3.6.0 패키지의 DLL에서 직접 확인한 항목입니다:
+### 설정 위치 (v3.6.0에서 확인)
 
-| 항목 | 하는 일 |
-|------|---------|
-| **`Show status bar`** | 상태바 표시 여부 — **Default UI에 없던 그 옵션** |
-| **`Show toolbars`** | 툴바 표시 여부 |
-| `Layout` 탭 | 패널 배치. `Add panel` 로 **JScript Panel** 을 넣습니다 |
-| `Colours` / `Artwork` / `Global` 탭 | 색·앨범아트·전역 설정 |
+| 할 일 | 위치 |
+|-------|------|
+| **UI 모듈 전환** | `Preferences` → `Display` → 맨 위 `User interface module` 드롭다운에서 **Columns UI** |
+| **상태바 끄기** | `Display` → `Columns UI` → `Status bar` 탭 → **`Show status bar`** 체크 해제 |
+| **툴바 끄기** | `Display` → `Columns UI` → `Main window` 탭 → **`Show toolbars`** |
+| **패널 배치** | `Display` → `Columns UI` → **`Layout`** (트리에서 우클릭) |
+
+### 레이아웃 잡기
+
+Columns UI를 처음 켜면 레이아웃 트리가 이렇습니다:
+
+```
+Row
+├ Column → Playlist switcher   ← 재생목록 탭 바
+└ Column → Playlist view       ← 기본 재생목록
+```
+
+화면에도 적혀 있듯 **트리에서 우클릭**해서 바꿉니다. DUI와 달리 `Replace`가 없고
+`Add` / `Remove` 방식입니다. DLL에서 확인한 메뉴 항목: `Add before`, `Add after`,
+`Add child`, `Remove`, `Copy`, `Paste`.
+
+1. `Playlist view` 우클릭 → `Remove`
+2. 그 `Column` 우클릭 → `Add child` → 패널 목록에서 **JScript Panel**
+3. `Playlist switcher` 가 있는 `Column` 우클릭 → `Remove` (탭 바 제거)
+4. 트리 아래 **`Apply`** → 창의 `OK`
+5. 새로 생긴 패널 우클릭 → `Configure...` → 스크립트 붙여넣기
+
+> 패널 목록에 무엇이 뜨는지는 확인하지 못했습니다. `JScript Panel`이 안 보이면
+> 그 목록 화면을 보여주세요.
 
 **스크립트는 그대로 씁니다.** UI 종류에 의존하는 API를 하나도 쓰지 않아서
-Default UI든 Columns UI든 똑같이 동작합니다. 레이아웃만 Columns UI 쪽에서 다시 잡으면 됩니다.
-
-> Columns UI 쪽 화면 구성은 제가 직접 확인하지 못했습니다. `Layout` 탭까지 가서
-> 막히면 화면을 보여주세요 — 그때부터 정확히 안내하겠습니다.
+Default UI든 Columns UI든 똑같이 동작합니다.
 
 ## 7. 마무리 손질 (선택)
 
