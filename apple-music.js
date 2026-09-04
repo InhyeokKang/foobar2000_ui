@@ -358,6 +358,13 @@ function posToVolume(p) {
     fb.Volume = p <= 0.0001 ? -100 : Math.max(-100, 10 * Math.log(p) / Math.LN2);
 }
 
+var FILTER_ADD = 1;                       // PlaylistLockFilterMask.filter_add
+
+function playlistCanAdd(pl) {
+    if (pl < 0) return false;
+    try { return !(plman.GetPlaylistLockFilterMask(pl) & FILTER_ADD); } catch (e) { return true; }
+}
+
 function playingLocation() {
     try {
         var loc = plman.GetPlayingItemLocation();
@@ -888,8 +895,13 @@ Playlist.prototype.paint = function (gr) {
     }
 
     if (!this.count) {
-        drawText(gr, '재생목록이 비어 있습니다', fonts.body, colours.sub,
+        drawText(gr, this.dropActive ? '여기에 놓으면 추가됩니다' : '재생목록이 비어 있습니다',
+            fonts.body, this.dropActive ? ACCENT : colours.sub,
             x0, this.top, W, px(40), TEXT_CENTRE);
+        if (this.dropActive) {
+            drawRound(gr, x0 + px(3), this.top, W - px(6), Math.max(px(20), this.view - px(3)),
+                px(8), px(2), ACCENT);
+        }
         return;
     }
 
@@ -902,6 +914,18 @@ Playlist.prototype.paint = function (gr) {
     var rc = this.barRect();
     if (rc) fillRound(gr, rc.x, rc.y, rc.w, rc.h, rc.w / 2,
         setAlpha(colours.sub, this.barHover || this.dragBar ? 190 : 90));
+
+    if (this.dropActive) {
+        drawRound(gr, x0 + px(3), this.top, W - px(6), Math.max(px(20), this.view - px(3)),
+            px(8), px(2), ACCENT);
+        // a pill so the hint stays readable over the rows underneath
+        var hint = '여기에 놓으면 이 재생목록에 추가됩니다';
+        var tw = textWidth(hint, fonts.small) + px(28);
+        var hx = x0 + Math.round((W - tw) / 2), hy = this.top + px(12), hh = px(26);
+        fillRound(gr, hx, hy, tw, hh, hh / 2, colours.bg);
+        drawRound(gr, hx, hy, tw, hh, hh / 2, px(1), ACCENT);
+        drawText(gr, hint, fonts.small, ACCENT, hx, hy, tw, hh, TEXT_CENTRE);
+    }
 };
 
 Playlist.prototype.paintRow = function (gr, i, playingIdx) {
@@ -963,6 +987,12 @@ Playlist.prototype.barRect = function () {
     var total = this.count * this.rowH;
     var h = Math.max(px(28), this.view * this.view / total);
     return { x: this.ox + this.W - px(7), y: this.top + (this.view - h) * (this.scroll / m), w: px(4), h: h };
+};
+
+Playlist.prototype.dropTarget = function () { return this.pl; };
+
+Playlist.prototype.setDropActive = function (on) {
+    if (this.dropActive !== on) { this.dropActive = on; window.Repaint(); }
 };
 
 Playlist.prototype.wheel = function (step) {
@@ -1175,6 +1205,11 @@ Sidebar.prototype.paint = function (gr) {
             fillRound(gr, x0 + px(6), y + px(1), W - px(12), this.rowH - px(3), px(6),
                 current ? colours.sel : colours.hover);
         }
+        if (this.dropRow === i) {
+            fillRound(gr, x0 + px(6), y + px(1), W - px(12), this.rowH - px(3), px(6),
+                setAlpha(ACCENT, 60));
+            drawRound(gr, x0 + px(6), y + px(1), W - px(12), this.rowH - px(3), px(6), px(2), ACCENT);
+        }
         drawText(gr, pl.name, fonts.body, current ? ACCENT : colours.text,
             x0 + pad, y, W - pad * 2 - px(30), this.rowH, TEXT_LEFT);
         drawText(gr, '' + pl.count, fonts.tiny, colours.sub,
@@ -1195,6 +1230,16 @@ Sidebar.prototype.paint = function (gr) {
         drawText(gr, artist, fonts.small, colours.sub,
             x0 + pad, ay + this.artSize + px(24), W - pad * 2, px(16), TEXT_CENTRE);
     }
+};
+
+// Explorer drops land on whichever playlist row the cursor is over.
+Sidebar.prototype.dropTarget = function (x, y) {
+    var i = this.rowAt(y);
+    return i >= 0 ? this.lists[i].idx : -1;
+};
+
+Sidebar.prototype.setDropRow = function (i) {
+    if (this.dropRow !== i) { this.dropRow = i; window.Repaint(); }
 };
 
 Sidebar.prototype.move = function (x, y) {
@@ -1313,6 +1358,18 @@ Composite.prototype.wheel = function (step) {
 Composite.prototype.contextMenu = function (x, y) {
     var p = this.partAt(x, y);
     return !!(p && p.contextMenu && p.contextMenu(x, y));
+};
+
+Composite.prototype.dropTarget = function (x, y) {
+    var p = this.partAt(x, y);
+    if (p && p.dropTarget) return p.dropTarget(x, y);
+    return this.list.pl;
+};
+
+Composite.prototype.setDropFeedback = function (x, y, on) {
+    var p = on ? this.partAt(x, y) : null;
+    this.side.setDropRow(p === this.side ? this.side.rowAt(y) : -1);
+    this.list.setDropActive(p === this.list || (on && p === this.bar));
 };
 
 Composite.prototype.key = function (vkey) { this.list.key(vkey); };
@@ -1513,6 +1570,62 @@ function on_mouse_rbtn_up(x, y) {
 
 function on_key_down(vkey) { if (panel.key) panel.key(vkey); }
 
+// ------------------------------------------------------- DRAG AND DROP ----
+//  Files dragged from Explorer land in the playlist under the cursor: a row
+//  in the sidebar picks that playlist, anywhere else uses the active one.
+
+var pendingDrop = null;
+
+function dropPlaylist(x, y) {
+    var pl = -1;
+    try { if (panel.dropTarget) pl = panel.dropTarget(x, y); } catch (e) {}
+    if (pl < 0) { try { pl = plman.ActivePlaylist; } catch (e) {} }
+    return pl;
+}
+
+function dropFeedback(x, y, on) {
+    try {
+        if (panel.setDropFeedback) panel.setDropFeedback(x, y, on);
+        else if (panel.setDropActive) panel.setDropActive(on);
+        else if (panel.setDropRow) panel.setDropRow(on ? panel.rowAt(y) : -1);
+    } catch (e) {}
+}
+
+function on_drag_over(action, x, y, mask) {
+    var pl = dropPlaylist(x, y);
+    var ok = pl < 0 || playlistCanAdd(pl);
+    action.Effect = ok ? 1 : 0;
+    dropFeedback(x, y, ok);
+}
+
+function on_drag_enter(action, x, y, mask) {
+    if (action && typeof x === 'number') on_drag_over(action, x, y, mask);
+}
+
+function on_drag_leave() { dropFeedback(0, 0, false); }
+
+function on_drag_drop(action, x, y, mask) {
+    dropFeedback(0, 0, false);
+    var pl = dropPlaylist(x, y);
+    if (pl < 0) {
+        try { pl = plman.CreatePlaylist(plman.PlaylistCount, '재생목록'); }
+        catch (e) { action.Effect = 0; return; }
+    }
+    if (!playlistCanAdd(pl)) { action.Effect = 0; return; }
+
+    var base = 0;
+    try {
+        plman.UndoBackup(pl);
+        base = plman.GetPlaylistItemCount(pl);
+    } catch (e) {}
+
+    action.Playlist = pl;
+    action.Base = base;          // append to the end
+    action.ToSelect = true;
+    action.Effect = 1;
+    pendingDrop = { pl: pl, base: base };
+}
+
 function on_playback_new_track(handle) {
     if (panel.setTrack) panel.setTrack(handle);
     window.Repaint();
@@ -1540,7 +1653,20 @@ function on_get_album_art_done(metadb, art_id, image) {
 
 function on_playlist_switch() { if (panel.refresh) panel.refresh(); window.Repaint(); }
 function on_playlists_changed() { if (panel.refresh) panel.refresh(); window.Repaint(); }
-function on_playlist_items_added() { if (panel.refresh) panel.refresh(); window.Repaint(); }
+function on_playlist_items_added(pl) {
+    if (panel.refresh) panel.refresh();
+    // nothing playing and the files landed in the playlist on screen: start them
+    if (pendingDrop && (pl === undefined || pl === pendingDrop.pl)) {
+        var d = pendingDrop;
+        pendingDrop = null;
+        var active = -1;
+        try { active = plman.ActivePlaylist; } catch (e) {}
+        if (!fb.IsPlaying && d.pl === active) {
+            try { plman.ExecutePlaylistDefaultAction(d.pl, d.base); } catch (e) {}
+        }
+    }
+    window.Repaint();
+}
 function on_playlist_items_removed() { if (panel.refresh) panel.refresh(); window.Repaint(); }
 function on_playlist_items_reordered() { if (panel.refresh) panel.refresh(); window.Repaint(); }
 function on_playlist_items_selection_change() { window.Repaint(); }
