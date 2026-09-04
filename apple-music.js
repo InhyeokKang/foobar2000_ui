@@ -80,7 +80,7 @@ function fmtTime(t) {
 
 var props = {
     mode:      window.GetProperty('Apple Music.Mode (auto|player|bar|list)', 'auto'),
-    theme:     window.GetProperty('Apple Music.Theme (dark|light)', 'dark'),
+    theme:     window.GetProperty('Apple Music.Theme (dark|light|glass)', 'dark'),
     accent:    window.GetProperty('Apple Music.Accent colour', '#FA243C'),
     scale:     window.GetProperty('Apple Music.Scale %', 100),
     rowHeight: window.GetProperty('Apple Music.List row height', 46),
@@ -106,6 +106,27 @@ var THEMES = {
         track:  RGB(0x48, 0x48, 0x4a),
         shadow: RGB(0, 0, 0)
     },
+    // Frosted glass: the artwork is blurred behind everything and the panels
+    // become translucent sheets over it.
+    glass: {
+        glass:   true,
+        bg:      RGB(0x7f, 0xae, 0xe2),          // sky gradient, top
+        bg2:     RGB(0xa5, 0xc8, 0xec),          // sky gradient, bottom
+        wash:    RGBA(0xff, 0xff, 0xff, 26),     // light lift over everything
+        wash2:   RGBA(0xff, 0xff, 0xff, 8),
+        artTint: 60,                             // how much of the blurred art shows
+        card:    RGBA(0xff, 0xff, 0xff, 62),
+        edge:    RGBA(0xff, 0xff, 0xff, 125),
+        hover:   RGBA(0xff, 0xff, 0xff, 40),
+        sel:     RGBA(0xff, 0xff, 0xff, 78),
+        line:    RGBA(0xff, 0xff, 0xff, 60),
+        text:    RGB(0xff, 0xff, 0xff),
+        sub:     RGBA(0xff, 0xff, 0xff, 200),
+        icon:    RGB(0xff, 0xff, 0xff),
+        track:   RGBA(0xff, 0xff, 0xff, 90),
+        shadow:  RGB(0x2b, 0x54, 0x8a),
+        accent:  RGB(0xff, 0xff, 0xff)
+    },
     light: {
         bg:     RGB(0xff, 0xff, 0xff),
         card:   RGB(0xf5, 0xf5, 0xf7),
@@ -120,8 +141,17 @@ var THEMES = {
     }
 };
 
-var colours = THEMES[props.theme === 'light' ? 'light' : 'dark'];
-var ACCENT = hexColour(props.accent, RGB(0xfa, 0x24, 0x3c));
+function pickTheme(name) { return THEMES[name] || THEMES.dark; }
+
+var DEFAULT_ACCENT = '#FA243C';
+var colours = pickTheme(props.theme);
+
+// A theme may carry its own accent; an accent the user actually changed wins.
+function resolveAccent() {
+    if (colours.accent && props.accent === DEFAULT_ACCENT) return colours.accent;
+    return hexColour(props.accent, RGB(0xfa, 0x24, 0x3c));
+}
+var ACCENT = resolveAccent();
 
 // ----------------------------------------------------------------- FONTS ----
 //  JScript Panel 3 wants a JSON string for drawing and the parts separately
@@ -163,6 +193,58 @@ function textWidth(s, font) {
 }
 
 // ------------------------------------------------------------- PRIMITIVES ---
+
+// Any Fill/Draw call takes a JSON brush instead of a colour (JSP3 3.4+).
+function grad(x1, y1, x2, y2, c1, c2) {
+    return JSON.stringify({ Start: [x1, y1], End: [x2, y2], Stops: [[0, c1], [1, c2]] });
+}
+
+var nowArt = { raw: null };
+var backdrop = { key: '', img: null };
+
+function setNowArt(handle) {
+    nowArt.raw = getArt(handle);
+    backdrop.key = '';
+    backdrop.img = null;
+}
+
+// The blurred artwork behind the glass, built once per panel size.
+function getBackdrop(w, h) {
+    if (!nowArt.raw || w < 8 || h < 8) return null;
+    var key = w + 'x' + h;
+    if (backdrop.key === key && backdrop.img) return backdrop.img;
+    try {
+        var out = utils.CreateImage(w, h);
+        var g = out.GetGraphics();
+        var raw = nowArt.raw;
+        var scale = Math.max(w / raw.Width, h / raw.Height);
+        var dw = raw.Width * scale, dh = raw.Height * scale;
+        g.DrawImage(raw, (w - dw) / 2, (h - dh) / 2, dw, dh, 0, 0, raw.Width, raw.Height);
+        out.ReleaseGraphics();
+        out.StackBlur(clamp(Math.round(Math.min(w, h) / 7), 20, 160));
+        backdrop.key = key;
+        backdrop.img = out;
+        return out;
+    } catch (e) { return null; }
+}
+
+// Background for one panel region. Solid in dark/light, frosted in glass.
+function paintBg(gr, x, y, w, h) {
+    if (!colours.glass) { gr.FillRectangle(x, y, w, h, colours.bg); return; }
+    var W = window.Width, H = window.Height;
+    // the sky is the base; the blurred artwork only tints it
+    gr.FillRectangle(x, y, w, h, grad(0, 0, 0, H, colours.bg, colours.bg2));
+    var bd = getBackdrop(W, H);
+    if (bd) gr.DrawImage(bd, x, y, w, h, x, y, w, h, colours.artTint);
+    gr.FillRectangle(x, y, w, h, grad(0, 0, 0, H, colours.wash, colours.wash2));
+}
+
+// A card surface: solid in dark/light, translucent sheet with a hairline in glass.
+function surface(gr, x, y, w, h, r, colour) {
+    if (!colours.glass) { fillRound(gr, x, y, w, h, r, colour || colours.card); return; }
+    fillRound(gr, x, y, w, h, r, colour || colours.card);
+    drawRound(gr, x, y, w, h, r, 1, colours.edge);
+}
 
 function fillRound(gr, x, y, w, h, r, colour) {
     if (w <= 0 || h <= 0) return;
@@ -282,6 +364,19 @@ function drawEq(gr, x, y, w, h, colour, phase, animated) {
 
 var maskCache = {};
 
+function circleMask(size) {
+    var key = 'c' + size;
+    if (maskCache[key]) return maskCache[key];
+    try {
+        var m = utils.CreateImage(size, size);
+        var g = m.GetGraphics();
+        g.FillEllipse(size / 2, size / 2, size / 2, size / 2, RGB(0, 0, 0));
+        m.ReleaseGraphics();
+        maskCache[key] = m;
+        return m;
+    } catch (e) { return null; }
+}
+
 function roundMask(size, radius) {
     var key = size + '_' + radius;
     if (maskCache[key]) return maskCache[key];
@@ -311,7 +406,7 @@ function squareImage(img, size) {
 
 function drawArt(gr, img, x, y, size, radius) {
     if (!img) return false;
-    var mask = radius > 0 ? roundMask(size, radius) : null;
+    var mask = radius < 0 ? circleMask(size) : (radius > 0 ? roundMask(size, radius) : null);
     if (mask) gr.DrawImageWithMask(img, mask, x, y, size, size);
     else gr.DrawImage(img, x, y, size, size, 0, 0, img.Width, img.Height);
     return true;
@@ -483,7 +578,101 @@ Player.prototype.layout = function (W, H) {
     this.bar ? this.layoutBar(W, H) : this.layoutFull(W, H);
 };
 
+// The reference look: a disc of artwork sitting across the top edge of a
+// frosted card that holds the text and the controls.
+Player.prototype.layoutGlass = function (W, H) {
+    var ox = this.ox, oy = this.oy;
+    var pad = px(16);
+    var big = px(46), small = px(28), gap = px(16);
+
+    var D = clamp(Math.min(W * 0.56, H * 0.36), px(64), px(300));
+    var cardW = Math.min(W - pad * 2, px(400));
+    var overlap = Math.round(D * 0.38);
+
+    this.showOrder = cardW > px(250);
+    var titleH = px(27), artistH = px(21), gap1 = px(12), timesH = px(18);
+    var volH = W > px(200) ? px(24) : 0;
+    var contentH = titleH + artistH + gap1 + px(4) + timesH + px(8) + big + px(12) + volH + px(14);
+    var cardH = overlap + contentH;
+
+    var total = D + cardH - overlap;
+    var top = Math.max(pad, (H - total) / 2);
+
+    this.artSize = D;
+    this.rcArt = { x: Math.round(ox + (W - D) / 2), y: Math.round(oy + top), w: D, h: D };
+    this.card = { x: Math.round(ox + (W - cardW) / 2), y: Math.round(oy + top + D - overlap),
+                  w: Math.round(cardW), h: Math.round(cardH) };
+
+    var y = this.card.y + overlap;
+    this.titleY = y; y += titleH;
+    this.artistY = y; y += artistH + gap1;
+    this.rcSeek = { x: this.card.x + px(26), y: Math.round(y), w: this.card.w - px(52), h: px(4) };
+    this.timesY = y + px(8);
+    y += px(4) + timesH + px(8);
+
+    var order = this.showOrder ? 1 : 0;
+    var rowW = big + (small + gap) * 2 + (order ? (small + gap) * 2 : 0);
+    var x = this.card.x + (this.card.w - rowW) / 2;
+    if (order) { this.find('shuffle').place(x, y + (big - small) / 2, small, small); x += small + gap; }
+    this.find('prev').place(x, y + (big - small) / 2, small, small); x += small + gap;
+    this.find('play').place(x, y, big, big); x += big + gap;
+    this.find('next').place(x, y + (big - small) / 2, small, small); x += small + gap;
+    if (order) this.find('repeat').place(x, y + (big - small) / 2, small, small);
+    y += big + px(12);
+
+    var vw = Math.min(px(170), this.card.w - px(70));
+    this.showVol = volH > 0 && vw > px(50);
+    this.rcVol = this.showVol
+        ? { x: Math.round(this.card.x + (this.card.w - vw) / 2 + px(13)), y: Math.round(y), w: vw, h: px(4) }
+        : { x: 0, y: 0, w: 0, h: 0 };
+};
+
+Player.prototype.paintGlass = function (gr) {
+    var c = this.card, rc = this.rcArt, playing = !!this.metadb;
+
+    for (var i = 7; i > 0; i--) {                       // soft drop shadow
+        fillRound(gr, c.x - i, c.y - i * 0.3 + px(5), c.w + i * 2, c.h + i * 2,
+            px(20) + i, setAlpha(colours.shadow, 7));
+    }
+    surface(gr, c.x, c.y, c.w, c.h, px(20));
+
+    for (var j = 6; j > 0; j--) {
+        gr.FillEllipse(rc.x + rc.w / 2, rc.y + rc.h / 2 + px(4), rc.w / 2 + j, rc.h / 2 + j,
+            setAlpha(colours.shadow, 8));
+    }
+    if (!drawArt(gr, this.art(rc.w), rc.x, rc.y, rc.w, -1)) {
+        gr.FillEllipse(rc.x + rc.w / 2, rc.y + rc.h / 2, rc.w / 2, rc.h / 2, colours.card);
+        drawIcon(gr, 'note', rc.x + rc.w / 2, rc.y + rc.h / 2, rc.w * 0.26, colours.sub);
+    }
+
+    var title = playing ? evalTf(tf.title, this.metadb) : '재생 중인 항목 없음';
+    var artist = playing ? evalTf(tf.artist, this.metadb) : '';
+    drawText(gr, title, fonts.huge, colours.text, c.x + px(14), this.titleY, c.w - px(28), px(27), TEXT_CENTRE);
+    drawText(gr, artist, fonts.body, colours.sub, c.x + px(14), this.artistY, c.w - px(28), px(21), TEXT_CENTRE);
+
+    var ratio = this.seekRatio(), len = fb.PlaybackLength;
+    this.slider(gr, this.rcSeek, ratio, this.hover === 'seek' || this.dragSeek, ACCENT);
+    if (len > 0) {
+        drawText(gr, fmtTime(ratio * len), fonts.tiny, colours.sub,
+            this.rcSeek.x, this.timesY, px(60), px(16), TEXT_LEFT);
+        drawText(gr, '-' + fmtTime(len - ratio * len), fonts.tiny, colours.sub,
+            this.rcSeek.x + this.rcSeek.w - px(60), this.timesY, px(60), px(16), TEXT_RIGHT);
+    }
+
+    for (var b = 0; b < this.buttons.length; b++) {
+        var btn = this.buttons[b];
+        if (!this.showOrder && (btn.id === 'shuffle' || btn.id === 'repeat')) continue;
+        btn.paint(gr, btn.id === 'play' ? 0.9 : 0.68);
+    }
+
+    if (this.rcVol.w > 0) {
+        drawIcon(gr, this.volIcon(), this.rcVol.x - px(15), this.rcVol.y + px(2), px(16), colours.sub);
+        this.slider(gr, this.rcVol, volumeToPos(), this.hover === 'vol' || this.dragVol, colours.icon);
+    }
+};
+
 Player.prototype.layoutFull = function (W, H) {
+    if (colours.glass) { this.layoutGlass(W, H); return; }
     var ox = this.ox, oy = this.oy;
     var pad = px(22);
     var big = px(52), small = px(34), gap = px(14);
@@ -595,8 +784,8 @@ Player.prototype.volIcon = function () {
 };
 
 Player.prototype.paint = function (gr) {
-    gr.FillRectangle(this.ox, this.oy, this.W, this.H, colours.bg);
-    this.bar ? this.paintBar(gr) : this.paintFull(gr);
+    paintBg(gr, this.ox, this.oy, this.W, this.H);
+    this.bar ? this.paintBar(gr) : (colours.glass ? this.paintGlass(gr) : this.paintFull(gr));
 };
 
 Player.prototype.paintFull = function (gr) {
@@ -658,11 +847,12 @@ Player.prototype.paintBar = function (gr) {
 
     if (!this.card || !this.card.visible) return;
     var c = this.card;
-    fillRound(gr, c.x, c.y, c.w, c.h, px(6), colours.card);
+    surface(gr, c.x, c.y, c.w, c.h, colours.glass ? px(10) : px(6));
 
     var rc = this.rcArt;
-    if (rc.w > 4 && !drawArt(gr, this.art(rc.w), rc.x, rc.y, rc.w, px(4))) {
-        fillRound(gr, rc.x, rc.y, rc.w, rc.h, px(4), colours.hover);
+    var artR = colours.glass ? -1 : px(4);
+    if (rc.w > 4 && !drawArt(gr, this.art(rc.w), rc.x, rc.y, rc.w, artR)) {
+        fillRound(gr, rc.x, rc.y, rc.w, rc.h, colours.glass ? rc.w / 2 : px(4), colours.hover);
         drawIcon(gr, 'note', rc.x + rc.w / 2, rc.y + rc.h / 2, rc.w * 0.5, colours.sub);
     }
 
@@ -873,7 +1063,7 @@ Playlist.prototype.rowAt = function (y) {
 
 Playlist.prototype.paint = function (gr) {
     var W = this.W, H = this.H, x0 = this.ox, y0 = this.oy;
-    gr.FillRectangle(x0, y0, W, H, colours.bg);
+    paintBg(gr, x0, y0, W, H);
 
     if (this.headerH) {
         drawText(gr, this.name || '재생목록', fonts.huge, colours.text,
@@ -1187,7 +1377,7 @@ Sidebar.prototype.rowAt = function (y) {
 
 Sidebar.prototype.paint = function (gr) {
     var x0 = this.ox, y0 = this.oy, W = this.W, pad = this.pad;
-    gr.FillRectangle(x0, y0, W, this.H, colours.bg);
+    paintBg(gr, x0, y0, W, this.H);
 
     drawText(gr, '재생목록', fonts.small, colours.sub,
         x0 + pad, y0 + px(6), W - pad * 2, px(22), TEXT_LEFT);
@@ -1219,8 +1409,9 @@ Sidebar.prototype.paint = function (gr) {
     if (this.artSize > 0) {
         var ax = x0 + Math.round((W - this.artSize) / 2);
         var ay = y0 + this.H - this.artSize - px(44);
-        if (!drawArt(gr, this.artwork(this.artSize), ax, ay, this.artSize, px(8))) {
-            fillRound(gr, ax, ay, this.artSize, this.artSize, px(8), colours.card);
+        var ar = colours.glass ? -1 : px(8);
+        if (!drawArt(gr, this.artwork(this.artSize), ax, ay, this.artSize, ar)) {
+            fillRound(gr, ax, ay, this.artSize, this.artSize, colours.glass ? this.artSize / 2 : px(8), colours.card);
             drawIcon(gr, 'note', ax + this.artSize / 2, ay + this.artSize / 2, this.artSize * 0.22, colours.sub);
         }
         var title = this.metadb ? evalTf(tf.title, this.metadb) : '';
@@ -1417,9 +1608,12 @@ function buildPanel(W, H) {
 
 function applyTheme(name) {
     props.theme = name;
-    window.SetProperty('Apple Music.Theme (dark|light)', name);
-    colours = THEMES[name === 'light' ? 'light' : 'dark'];
+    window.SetProperty('Apple Music.Theme (dark|light|glass)', name);
+    colours = pickTheme(name);
+    ACCENT = resolveAccent();
     svgCache = {}; svgOrder = [];
+    maskCache = {};
+    backdrop.key = ''; backdrop.img = null;
     window.Repaint();
 }
 
@@ -1495,7 +1689,8 @@ function showPanelMenu(x, y, cmm) {
 
         theme.AppendMenuItem(MF_STRING, 1, '다크');
         theme.AppendMenuItem(MF_STRING, 2, '라이트');
-        theme.CheckMenuRadioItem(1, 2, props.theme === 'light' ? 2 : 1);
+        theme.AppendMenuItem(MF_STRING, 3, '글래스');
+        theme.CheckMenuRadioItem(1, 3, props.theme === 'light' ? 2 : (props.theme === 'glass' ? 3 : 1));
         theme.AppendTo(menu, MF_STRING, '테마');
 
         var modes = ['auto', 'all', 'player', 'bar', 'list'];
@@ -1519,6 +1714,7 @@ function showPanelMenu(x, y, cmm) {
         else if (runMainMenu(built, id)) { /* foobar2000 handled it */ }
         else if (id === 1) applyTheme('dark');
         else if (id === 2) applyTheme('light');
+        else if (id === 3) applyTheme('glass');
         else if (id >= 10 && id < 10 + modes.length) setMode(modes[id - 10]);
         else if (id === 20) window.ShowProperties();
         else if (id === 21) window.ShowConfigure();
@@ -1553,7 +1749,9 @@ function on_paint(gr) {
 }
 
 function on_size() {
-    if (window.Width > 0 && window.Height > 0) buildPanel(window.Width, window.Height);
+    if (window.Width <= 0 || window.Height <= 0) return;
+    backdrop.key = ''; backdrop.img = null;
+    buildPanel(window.Width, window.Height);
 }
 
 function on_mouse_move(x, y, mask) { if (panel.move) panel.move(x, y, mask); }
@@ -1627,17 +1825,23 @@ function on_drag_drop(action, x, y, mask) {
 }
 
 function on_playback_new_track(handle) {
+    setNowArt(handle);
     if (panel.setTrack) panel.setTrack(handle);
     window.Repaint();
 }
 
 function on_playback_stop(reason) {
-    if (reason !== 2 && panel.setTrack) panel.setTrack(null);
+    if (reason !== 2) {
+        setNowArt(null);
+        if (panel.setTrack) panel.setTrack(null);
+    }
     window.Repaint();
 }
 
 function on_playback_dynamic_info_track() {
-    if (panel.setTrack) panel.setTrack(fb.GetNowPlaying());
+    var h = fb.GetNowPlaying();
+    setNowArt(h);
+    if (panel.setTrack) panel.setTrack(h);
     window.Repaint();
 }
 
@@ -1675,5 +1879,6 @@ function on_metadb_changed() { if (panel.refresh) panel.refresh(); window.Repain
 
 // ------------------------------------------------------------------ INIT ----
 
+setNowArt(fb.GetNowPlaying());
 buildPanel(window.Width || 400, window.Height || 400);
 timerId = window.SetInterval(function () { if (panel.tick) panel.tick(); }, 40);

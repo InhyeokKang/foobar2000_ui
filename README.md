@@ -24,6 +24,18 @@ foobar2000 기본 UI를 Apple Music처럼 바꿔주는 패널 스크립트입니
 다크/라이트 테마, Apple Music 시그니처 레드(`#FA243C`) 액센트, 라운드 코너 앨범아트,
 호버 하이라이트, 재생 중 트랙의 이퀄라이저 애니메이션까지 들어 있습니다.
 
+### 글래스 테마
+
+파스텔 블루 하늘 그라디언트 위에 반투명 유리 시트를 얹는 구성입니다.
+
+- 재생 중인 **앨범아트를 블러 처리해 배경에 은은하게** 깝니다 (`img.StackBlur`)
+- 패널은 반투명 흰 시트 + 머리카락 굵기 테두리
+- 앨범아트가 **원형**으로 바뀝니다
+- `플레이어 (세로)` 모드에서는 원형 아트가 유리 카드 위쪽에 걸쳐지는 구성이 됩니다
+
+배경 그라디언트는 `gr.FillRectangle`에 JSON 브러시를 넘겨 그립니다
+(JScript Panel 3.4부터 모든 Fill/Draw가 그라디언트를 받습니다).
+
 아이콘은 폰트 글리프가 아니라 **SVG**입니다. JScript Panel 3에 내장된 resvg가 그리므로
 아이콘 폰트를 따로 깔 필요가 없고, 어떤 배율에서도 뭉개지지 않습니다.
 
@@ -133,7 +145,7 @@ Splitter (vertical)
 
 패널 **어디서든 우클릭**하면 나옵니다:
 
-- **테마** — 다크 / 라이트
+- **테마** — 다크 / 라이트 / **글래스**
 - **패널 모드** — 자동 / 전체 / 플레이어(세로) / 바(가로) / 재생목록
 - **foobar2000 메뉴** — View / Playback / Library / File / Edit 를 그대로 불러옵니다.
   메뉴 이름은 버전과 설치된 컴포넌트에 따라 다르므로, **자기 설치본에 실제로 뭐가 있는지**
@@ -149,7 +161,7 @@ Splitter (vertical)
 | 속성 | 기본값 | 설명 |
 |------|--------|------|
 | `Apple Music.Mode (auto\|player\|bar\|list)` | `auto` | 패널 모드 |
-| `Apple Music.Theme (dark\|light)` | `dark` | 테마 |
+| `Apple Music.Theme (dark\|light\|glass)` | `dark` | 테마 |
 | `Apple Music.Accent colour` | `#FA243C` | 액센트 색 (Apple Music 레드). `#1DB954`로 바꾸면 Spotify 느낌 |
 | `Apple Music.Scale %` | `100` | 고DPI 화면에서 키우기 (예: 150) |
 | `Apple Music.List row height` | `46` | 리스트 행 높이. 34 이하로 내리면 한 줄 컴팩트 모드 |
