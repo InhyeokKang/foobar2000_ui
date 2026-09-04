@@ -251,11 +251,7 @@ var SVG = {
            '<path d="M4 7h11"/><path d="M4 12h11"/><path d="M4 17h7"/></g>' +
            '<path d="M17.6 13.5 L21 16 L17.6 18.5 Z" fill="%C%"/>',
 
-    more: '<g fill="%C%"><circle cx="6" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/>' +
-          '<circle cx="18" cy="12" r="1.7"/></g>',
-
-    heart: '<path d="M12 20.2s-7.4-4.6-7.4-9.4A4.2 4.2 0 0 1 12 8.2a4.2 4.2 0 0 1 7.4 2.6c0 4.8-7.4 9.4-7.4 9.4z" ' +
-           'fill="none" stroke="%C%" stroke-width="1.8" stroke-linejoin="round"/>'
+    gear: '<g fill="none" stroke="%C%" stroke-width="2.1" stroke-linecap="round"><path d="M18.20 12.00L21.00 12.00"/><path d="M16.38 16.38L18.36 18.36"/><path d="M12.00 18.20L12.00 21.00"/><path d="M7.62 16.38L5.64 18.36"/><path d="M5.80 12.00L3.00 12.00"/><path d="M7.62 7.62L5.64 5.64"/><path d="M12.00 5.80L12.00 3.00"/><path d="M16.38 7.62L18.36 5.64"/></g><circle cx="12" cy="12" r="6.2" fill="none" stroke="%C%" stroke-width="1.8"/><circle cx="12" cy="12" r="2.5" fill="none" stroke="%C%" stroke-width="1.8"/>'
 };
 
 var svgCache = {}, svgOrder = [];
@@ -451,8 +447,8 @@ function TopBar() {
         new Button('queue',
             function () { return ['queue', self.hover === 'queue' ? colours.text : colours.sub]; },
             function (x, y) { showPlaylistMenu(x, y); }),
-        new Button('more',
-            function () { return ['more', self.hover === 'more' ? colours.text : colours.sub]; },
+        new Button('gear',
+            function () { return ['gear', self.hover === 'gear' ? colours.text : colours.sub]; },
             function (x, y) { showPanelMenu(x, y); })
     ];
 }
