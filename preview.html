@@ -241,7 +241,9 @@
         <dt>더블클릭</dt><dd>리스트의 곡 재생</dd>
         <dt>클릭</dt><dd>선택 &middot; Ctrl 토글 &middot; Shift 범위</dd>
         <dt>드래그앤드롭</dt><dd>파일 탐색기에서 끌어다 놓으면 현재 재생목록에 추가</dd>
-        <dt>재생목록 전환</dt><dd>상단 바의 이름 또는 대기열 아이콘</dd>
+        <dt>검색</dt><dd>오른쪽 위 돋보기 &mdash; 타이핑하면 리스트가 바로 걸러집니다 (Esc로 닫기)</dd>
+        <dt>정렬</dt><dd>오른쪽 아래 아이콘 &mdash; 제목·아티스트·앨범·길이·무작위</dd>
+        <dt>재생목록</dt><dd>왼쪽 아래 칩 또는 상단 바의 이름</dd>
       </dl>
       <p class="note" style="margin-top:22px">우클릭 메뉴는 이 미리보기에서 열리지 않습니다.
         실제 foobar2000에서는 <strong>패널 우클릭</strong>으로 테마·모드를 바꾸고,
@@ -523,6 +525,17 @@ var SVG = {
            '<path d="M4 7h11"/><path d="M4 12h11"/><path d="M4 17h7"/></g>' +
            '<path d="M17.6 13.5 L21 16 L17.6 18.5 Z" fill="%C%"/>',
 
+    search: '<circle cx="10.6" cy="10.6" r="6.1" fill="none" stroke="%C%" stroke-width="1.9"/>' +
+            '<path d="M15.2 15.2 L20 20" fill="none" stroke="%C%" stroke-width="2.1" stroke-linecap="round"/>',
+
+    sort: '<g fill="none" stroke="%C%" stroke-width="1.9" stroke-linecap="round">' +
+          '<path d="M4 6.5h12"/><path d="M4 12h8"/><path d="M4 17.5h4"/>' +
+          '<path d="M17.5 10.5v9"/></g>' +
+          '<path d="M14.6 16.9 L17.5 20.4 L20.4 16.9 Z" fill="%C%"/>',
+
+    close: '<g fill="none" stroke="%C%" stroke-width="2" stroke-linecap="round">' +
+           '<path d="M7.5 7.5 L16.5 16.5"/><path d="M16.5 7.5 L7.5 16.5"/></g>',
+
     caret: '<path d="M8.8 10.6 L12 13.9 L15.2 10.6 Z" fill="%C%"/>',
 
     gear: '<g fill="none" stroke="%C%" stroke-width="2.1" stroke-linecap="round"><path d="M18.20 12.00L21.00 12.00"/><path d="M16.38 16.38L18.36 18.36"/><path d="M12.00 18.20L12.00 21.00"/><path d="M7.62 16.38L5.64 18.36"/><path d="M5.80 12.00L3.00 12.00"/><path d="M7.62 7.62L5.64 5.64"/><path d="M12.00 5.80L12.00 3.00"/><path d="M16.38 7.62L18.36 5.64"/></g><circle cx="12" cy="12" r="6.2" fill="none" stroke="%C%" stroke-width="1.8"/><circle cx="12" cy="12" r="2.5" fill="none" stroke="%C%" stroke-width="1.8"/>'
@@ -741,11 +754,17 @@ function runAction(fn, x, y) {
 
 function TopBar() {
     this.hover = '';
+    this.searching = false;
+    this.query = '';
+    this.phase = 0;
     var self = this;
     this.buttons = [
-        new Button('queue',
-            function () { return ['queue', self.hover === 'queue' ? colours.text : colours.sub]; },
-            function (x, y) { showPlaylistMenu(x, y); }),
+        new Button('search',
+            function () {
+                return [self.searching ? 'close' : 'search',
+                        self.searching || self.hover === 'search' ? colours.text : colours.sub];
+            },
+            function () { self.toggleSearch(); }),
         new Button('gear',
             function () { return ['gear', self.hover === 'gear' ? colours.text : colours.sub]; },
             function (x, y) { openPreferences(x, y); })
@@ -766,10 +785,53 @@ TopBar.prototype.setViewport = function (x, y, w, h) {
     this.name.w = Math.max(px(40), bx + size - this.name.x - px(14));
 };
 
+TopBar.prototype.toggleSearch = function () {
+    this.searching = !this.searching;
+    if (!this.searching) { this.query = ''; }
+    if (panel.search) panel.search(this.query);
+    window.Repaint();
+};
+
+TopBar.prototype.type = function (ch) {
+    if (!this.searching) return false;
+    this.query += ch;
+    if (panel.search) panel.search(this.query);
+    window.Repaint();
+    return true;
+};
+
+TopBar.prototype.backspace = function () {
+    if (!this.searching || !this.query.length) return false;
+    this.query = this.query.slice(0, this.query.length - 1);
+    if (panel.search) panel.search(this.query);
+    window.Repaint();
+    return true;
+};
+
 TopBar.prototype.paint = function (gr) {
     var l = this.logo;
     fillRound(gr, l.x, l.y, l.w, l.h, l.w / 2, colours.ink);
     drawIcon(gr, 'note', l.x + l.w / 2, l.y + l.h / 2, l.w * 0.52, colours.onInk);
+
+    if (this.searching) {
+        var f = this.name, fh = Math.min(px(30), this.H - px(10));
+        var fy = this.oy + (this.H - fh) / 2;
+        var fw = Math.min(f.w, px(320));
+        fillRound(gr, f.x, fy, fw, fh, fh / 2, colours.card);
+        drawIcon(gr, 'search', f.x + px(15), fy + fh / 2, px(14), colours.sub);
+        var tx = f.x + px(28), tw = fw - px(38);
+        if (this.query) {
+            drawText(gr, this.query, fonts.row, colours.text, tx, fy, tw, fh, TEXT_LEFT);
+            if (this.phase % 26 < 13) {
+                var cw = Math.min(textWidth(this.query, fonts.row), tw - px(6));
+                gr.FillRectangle(tx + cw + px(2), fy + fh * 0.26, px(1.5), fh * 0.48, colours.sub);
+            }
+        } else {
+            drawText(gr, '제목 · 아티스트 · 앨범 검색', fonts.row, colours.faint, tx, fy, tw, fh, TEXT_LEFT);
+        }
+        for (var b = 0; b < this.buttons.length; b++) this.buttons[b].paint(gr, 0.62);
+        return;
+    }
 
     var name = '', count = 0;
     try {
@@ -789,8 +851,14 @@ TopBar.prototype.paint = function (gr) {
 TopBar.prototype.hitTest = function (x, y) {
     var b = hitButtons(this.buttons, x, y);
     if (b) return b.id;
+    if (this.searching) return '';
     if (inRect({ x: this.logo.x, y: this.oy, w: this.name.x + this.name.w - this.logo.x, h: this.H }, x, y)) return 'name';
     return '';
+};
+
+TopBar.prototype.tick = function () {
+    this.phase++;
+    if (this.searching && this.phase % 13 === 0) window.Repaint();
 };
 
 TopBar.prototype.move = function (x, y) {
@@ -808,6 +876,7 @@ TopBar.prototype.up = function (x, y) {
     if (b) { runAction(b.action, x, y); return; }
     if (this.hitTest(x, y) === 'name') showPlaylistMenu(x, y);
 };
+
 
 // -------------------------------------------------------------- ART CARD ----
 
@@ -928,12 +997,35 @@ TrackList.prototype.refresh = function () {
     try {
         this.pl = plman.ActivePlaylist;
         this.items = this.pl >= 0 ? plman.GetPlaylistItems(this.pl) : null;
-        this.count = this.items ? this.items.Count : 0;
+        this.all = this.items ? this.items.Count : 0;
         this.name = this.pl >= 0 ? plman.GetPlaylistName(this.pl) : '';
         this.total = this.items && this.items.CalcTotalDuration ? this.items.CalcTotalDuration() : 0;
-    } catch (e) { this.items = null; this.count = 0; this.name = ''; this.total = 0; }
+    } catch (e) { this.items = null; this.all = 0; this.name = ''; this.total = 0; }
     this.rows = {};
+    this.setQuery(this.query);
+};
+
+// The list can show a filtered subset; display index -> playlist index.
+TrackList.prototype.at = function (n) {
+    return this.filtered ? this.filtered[n] : n;
+};
+
+TrackList.prototype.setQuery = function (q) {
+    this.query = q || '';
+    if (!this.query || this.all > 4000) {          // do not grind a huge playlist
+        this.filtered = null;
+    } else {
+        var lq = this.query.toLowerCase(), out = [];
+        for (var i = 0; i < this.all; i++) {
+            var r = this.row(i);
+            if ((r.title + ' ' + r.artist + ' ' + r.album).toLowerCase().indexOf(lq) >= 0) out.push(i);
+        }
+        this.filtered = out;
+    }
+    this.count = this.filtered ? this.filtered.length : this.all;
+    this.target = this.scroll = 0;
     this.clampScroll();
+    window.Repaint();
 };
 
 TrackList.prototype.row = function (i) {
@@ -944,6 +1036,7 @@ TrackList.prototype.row = function (i) {
         handle: h,
         title: evalTf(tf.title, h) || '(제목 없음)',
         artist: evalTf(tf.artist, h),
+        album: evalTf(tf.album, h),
         length: evalTf(tf.length, h)
     };
     this.rows[i] = r;
@@ -982,14 +1075,20 @@ TrackList.prototype.paint = function (gr) {
     if (this.headerH) {
         drawText(gr, this.name || '재생목록', fonts.display, colours.text,
             x0 + px(2), y0 + px(8), W - px(80), px(34), TEXT_LEFT);
-        var sub = this.count + ' Songs';
-        if (this.total > 0) sub += '  ·  ' + fmtTime(this.total);
+        var sub;
+        if (this.query) {
+            sub = '"' + this.query + '"  ·  ' + this.count + ' / ' + this.all + ' Songs';
+        } else {
+            sub = this.count + ' Songs';
+            if (this.total > 0) sub += '  ·  ' + fmtTime(this.total);
+        }
         drawText(gr, sub, fonts.small, colours.sub,
             x0 + px(2), y0 + px(42), W - px(80), px(20), TEXT_LEFT);
     }
 
     if (!this.count) {
-        drawText(gr, this.dropActive ? '여기에 놓으면 추가됩니다' : '재생목록이 비어 있습니다',
+        drawText(gr, this.dropActive ? '여기에 놓으면 추가됩니다'
+                   : (this.query ? '검색 결과가 없습니다' : '재생목록이 비어 있습니다'),
             fonts.body, this.dropActive ? colours.text : colours.sub,
             x0, this.top, W, px(40), TEXT_CENTRE);
     } else {
@@ -997,7 +1096,7 @@ TrackList.prototype.paint = function (gr) {
         var playingIdx = (loc && loc.pl === this.pl) ? loc.item : -1;
         var first = Math.max(0, Math.floor(this.scroll / this.rowH));
         var last = Math.min(this.count - 1, Math.ceil((this.scroll + this.view) / this.rowH));
-        for (var i = first; i <= last; i++) this.paintRow(gr, i, playingIdx);
+        for (var n = first; n <= last; n++) this.paintRow(gr, n, playingIdx);
 
         // let the list fade out at the bottom instead of being cut off
         var fade = Math.min(px(46), this.view / 3);
@@ -1017,9 +1116,10 @@ TrackList.prototype.paint = function (gr) {
     }
 };
 
-TrackList.prototype.paintRow = function (gr, i, playingIdx) {
-    var y = this.top + i * this.rowH - this.scroll;
+TrackList.prototype.paintRow = function (gr, n, playingIdx) {
+    var y = this.top + n * this.rowH - this.scroll;
     var x0 = this.ox, W = this.W, rowH = this.rowH;
+    var i = this.at(n);
     var r = this.row(i);
     var playing = i === playingIdx;
     var selected = false;
@@ -1113,8 +1213,9 @@ TrackList.prototype.down = function (x, y, mask) {
         this.dragOffset = y - rc.y;
         return;
     }
-    var i = this.rowAt(y);
-    if (i < 0) return;
+    var n = this.rowAt(y);
+    if (n < 0) return;
+    var i = this.at(n);
     var ctrl = !!(mask & MK_CTRL), shift = !!(mask & MK_SHIFT);
     try {
         if (ctrl) {
@@ -1123,7 +1224,9 @@ TrackList.prototype.down = function (x, y, mask) {
             var from = plman.GetPlaylistFocusItemIndex(this.pl);
             if (from < 0) from = i;
             var a = Math.min(from, i), b = Math.max(from, i), idx = [];
-            for (var k = a; k <= b; k++) idx.push(k);
+            for (var k = a; k <= b; k++) {
+                if (!this.filtered || this.displayPos(k) >= 0) idx.push(k);
+            }
             plman.ClearPlaylistSelection(this.pl);
             plman.SetPlaylistSelection(this.pl, idx, true);
         } else {
@@ -1137,14 +1240,21 @@ TrackList.prototype.down = function (x, y, mask) {
 
 TrackList.prototype.up = function () { if (this.dragBar) { this.dragBar = false; window.Repaint(); } };
 
+TrackList.prototype.displayPos = function (i) {
+    if (!this.filtered) return i;
+    for (var n = 0; n < this.filtered.length; n++) if (this.filtered[n] === i) return n;
+    return -1;
+};
+
 TrackList.prototype.dblclick = function (x, y) {
-    var i = this.rowAt(y);
-    if (i >= 0) { try { plman.ExecutePlaylistDefaultAction(this.pl, i); } catch (e) {} }
+    var n = this.rowAt(y);
+    if (n >= 0) { try { plman.ExecutePlaylistDefaultAction(this.pl, this.at(n)); } catch (e) {} }
 };
 
 TrackList.prototype.contextMenu = function (x, y) {
-    var i = this.rowAt(y);
-    if (i < 0) return false;
+    var n = this.rowAt(y);
+    if (n < 0) return false;
+    var i = this.at(n);
     var cmm = null;
     try {
         if (!plman.IsPlaylistItemSelected(this.pl, i)) {
@@ -1172,13 +1282,16 @@ TrackList.prototype.key = function (vkey) {
     var focus = -1;
     try { focus = plman.GetPlaylistFocusItemIndex(this.pl); } catch (e) {}
     if (vkey === VK_UP || vkey === VK_DOWN) {
-        var next = clamp(focus + (vkey === VK_DOWN ? 1 : -1), 0, this.count - 1);
+        var pos = this.displayPos(focus);
+        if (pos < 0) pos = 0;
+        var nextPos = clamp(pos + (vkey === VK_DOWN ? 1 : -1), 0, this.count - 1);
+        var next = this.at(nextPos);
         try {
             plman.ClearPlaylistSelection(this.pl);
             plman.SetPlaylistSelectionSingle(this.pl, next, true);
             plman.SetPlaylistFocusItem(this.pl, next);
         } catch (e) {}
-        this.ensureVisible(next);
+        this.ensureVisible(nextPos);
     } else if (vkey === VK_RETURN && focus >= 0) {
         try { plman.ExecutePlaylistDefaultAction(this.pl, focus); } catch (e) {}
     } else if (vkey === VK_PRIOR || vkey === VK_NEXT) {
@@ -1203,9 +1316,9 @@ function BottomBar() {
     this.cache = { raw: null, sized: {} };
     var self = this;
     this.buttons = [
-        new Button('queue',
-            function () { return ['queue', self.hover === 'queue' ? colours.text : colours.sub]; },
-            function (x, y) { showPlaylistMenu(x, y); })
+        new Button('sort',
+            function () { return ['sort', self.hover === 'sort' ? colours.text : colours.sub]; },
+            function (x, y) { showSortMenu(x, y); })
     ];
 }
 
@@ -1486,6 +1599,14 @@ Composite.prototype.contextMenu = function (x, y) {
 };
 
 Composite.prototype.key = function (vkey) { this.list.key(vkey); };
+Composite.prototype.search = function (q) { this.list.setQuery(q); };
+Composite.prototype.typeChar = function (ch) { return this.top.type(ch); };
+Composite.prototype.backspace = function () { return this.top.backspace(); };
+Composite.prototype.searching = function () { return this.top.searching; };
+Composite.prototype.closeSearch = function () {
+    if (this.top.searching) { this.top.toggleSearch(); return true; }
+    return false;
+};
 
 Composite.prototype.refresh = function () {
     this.list.refresh();
@@ -1632,6 +1753,41 @@ function createPlaylist() {
     }
 }
 
+// Sorting the playlist in place — the one thing the bottom right corner
+// could not do before. Every sort is backed up first, so Edit > Undo works.
+var SORTS = [
+    ['제목',      '%title%'],
+    ['아티스트',  '%artist%|%album%|%tracknumber%'],
+    ['앨범',      '%album%|%tracknumber%'],
+    ['길이',      '%length_seconds%'],
+    ['파일 경로', '%path%']
+];
+
+function showSortMenu(x, y) {
+    var menu = null;
+    try {
+        menu = window.CreatePopupMenu();
+        for (var i = 0; i < SORTS.length; i++) {
+            menu.AppendMenuItem(MF_STRING, 10 + i, SORTS[i][0] + ' 순');
+        }
+        menu.AppendMenuSeparator();
+        menu.AppendMenuItem(MF_STRING, 50, '무작위로 섞기');
+        var id = menu.TrackPopupMenu(x, y);
+        if (id <= 0) return true;
+        var pl = plman.ActivePlaylist;
+        if (pl < 0) return true;
+        plman.UndoBackup(pl);
+        if (id === 50) plman.SortByFormat(pl, '$rand()');
+        else if (id >= 10 && id < 10 + SORTS.length) plman.SortByFormat(pl, SORTS[id - 10][1]);
+        return true;
+    } catch (e) {
+        console.log('Studio: 정렬 실패 - ' + e);
+        return false;
+    } finally {
+        try { if (menu) menu.Dispose(); } catch (e2) {}
+    }
+}
+
 function showPlaylistMenu(x, y) {
     var menu = null;
     try {
@@ -1744,7 +1900,7 @@ function on_mouse_rbtn_up(x, y) {
     return showPanelMenu(x, y);
 }
 
-var VK_CONTROL = 0x11, VK_P = 0x50;
+var VK_CONTROL = 0x11, VK_P = 0x50, VK_BACK = 8, VK_ESCAPE = 27;
 
 function on_key_down(vkey) {
     if (vkey === VK_P) {
@@ -1752,7 +1908,18 @@ function on_key_down(vkey) {
         try { ctrl = utils.IsKeyPressed(VK_CONTROL); } catch (e) {}
         if (ctrl) { openPreferences(px(20), px(20)); return; }
     }
+    if (panel.searching && panel.searching()) {
+        if (vkey === VK_BACK) { panel.backspace(); return; }
+        if (vkey === VK_ESCAPE) { panel.closeSearch(); return; }
+    }
     if (panel.key) panel.key(vkey);
+}
+
+// Typing goes to the search field while it is open.
+function on_char(code) {
+    if (code >= 32 && panel.typeChar) {
+        try { if (panel.typeChar(String.fromCharCode(code))) return; } catch (e) {}
+    }
 }
 
 // ------------------------------------------------------- DRAG AND DROP ----
@@ -1865,7 +2032,7 @@ return {
   on_mouse_move: on_mouse_move, on_mouse_leave: on_mouse_leave,
   on_mouse_lbtn_down: on_mouse_lbtn_down, on_mouse_lbtn_up: on_mouse_lbtn_up,
   on_mouse_lbtn_dblclk: on_mouse_lbtn_dblclk, on_mouse_rbtn_up: on_mouse_rbtn_up,
-  on_mouse_wheel: on_mouse_wheel, on_key_down: on_key_down,
+  on_mouse_wheel: on_mouse_wheel, on_key_down: on_key_down, on_char: on_char,
   on_playback_new_track: on_playback_new_track, on_playback_stop: on_playback_stop,
   on_playback_pause: on_playback_pause, on_playback_time: on_playback_time,
   on_playback_seek: on_playback_seek, on_volume_change: on_volume_change,
@@ -2225,6 +2392,7 @@ return {
     GetPlaylistItemCount: function () { return ITEMS.length; },
     GetPlaylistLockFilterMask: function () { return 0; },
     UndoBackup: function () {},
+    SortByFormat: function () { toast('재생목록을 정렬했습니다'); return true; },
     CreatePlaylist: function (idx, name) { PLAYLISTS.push(name); return PLAYLISTS.length - 1; },
     GetPlaylistItems: function () {
       return { Count: ITEMS.length, GetItem: function (i) { return ITEMS[i]; },
@@ -2270,6 +2438,9 @@ return {
     var ctx = canvas.getContext('2d');
     var gfx = new Gfx(ctx);
     var w = 10, h = 10, timers = [], props = {};
+    // the script can call Repaint while it is still constructing, so this
+    // has to exist before makePanel runs
+    var host = { api: null, dirty: true, timers: timers, canvas: canvas, mode: mode };
     props['Studio.Mode (auto|all|art|list|bar)'] = mode;
     props['Studio.Theme (light|dark)'] = 'light';
 
@@ -2297,8 +2468,8 @@ return {
     };
 
     var api = makePanel(win, fb, utils, plman, console);
-    var host = { api: api, dirty: true, timers: timers, canvas: canvas, mode: mode,
-                 paint: function () { ctx.setTransform(DPR, 0, 0, DPR, 0, 0); api.on_paint(gfx); } };
+    host.api = api;
+    host.paint = function () { ctx.setTransform(DPR, 0, 0, DPR, 0, 0); api.on_paint(gfx); };
 
     function resize() {
       var r = canvas.getBoundingClientRect();
@@ -2358,6 +2529,17 @@ return {
       api.on_playlist_items_added(action.Playlist);
       toast(names.length + '곡을 재생목록에 추가했습니다');
     });
+
+    canvas.addEventListener('keydown', function (e) {
+      if (e.key === 'Backspace') { e.preventDefault(); api.on_key_down(8); }
+      else if (e.key === 'Escape') { api.on_key_down(27); }
+      else if (e.key.length === 1) { api.on_char(e.key.charCodeAt(0)); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); api.on_key_down(38); }
+      else if (e.key === 'ArrowDown') { e.preventDefault(); api.on_key_down(40); }
+      else if (e.key === 'Enter') { api.on_key_down(13); }
+    });
+    canvas.setAttribute('tabindex', '0');
+    canvas.addEventListener('mousedown', function () { canvas.focus(); });
 
     canvas.addEventListener('wheel', function (e) {
       var p = api.getPanel();
