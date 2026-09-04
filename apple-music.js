@@ -465,12 +465,19 @@ Player.prototype.art = function (size) {
     return this.cache.sized[size];
 };
 
+Player.prototype.setViewport = function (x, y, w, h) {
+    this.ox = x; this.oy = y;
+    this.layout(w, h);
+};
+
 Player.prototype.layout = function (W, H) {
     this.W = W; this.H = H;
+    if (this.ox === undefined) { this.ox = 0; this.oy = 0; }
     this.bar ? this.layoutBar(W, H) : this.layoutFull(W, H);
 };
 
 Player.prototype.layoutFull = function (W, H) {
+    var ox = this.ox, oy = this.oy;
     var pad = px(22);
     var big = px(52), small = px(34), gap = px(14);
     var blockH = px(20 + 26 + 20 + 12 + 30 + 16 + 12) + big + pad;
@@ -482,33 +489,34 @@ Player.prototype.layoutFull = function (W, H) {
     this.artSize = art;
 
     var top = art ? Math.max(pad, (H - blockH - art) / 2) : pad;
-    this.rcArt = { x: Math.round((W - art) / 2), y: Math.round(top), w: art, h: art };
+    this.rcArt = { x: Math.round(ox + (W - art) / 2), y: Math.round(oy + top), w: art, h: art };
 
     var y = top + art + (art ? px(20) : px(4));
-    this.titleY = y; y += px(26);
-    this.artistY = y; y += px(20) + px(12);
-    this.rcSeek = { x: pad, y: Math.round(y), w: W - pad * 2, h: px(4) };
-    this.timesY = y + px(8);
+    this.titleY = oy + y; y += px(26);
+    this.artistY = oy + y; y += px(20) + px(12);
+    this.rcSeek = { x: ox + pad, y: Math.round(oy + y), w: W - pad * 2, h: px(4) };
+    this.timesY = oy + y + px(8);
     y += px(30);
 
     var order = this.showOrder ? 1 : 0;
     var rowW = big + (small + gap) * 2 + (order ? (small + gap) * 2 : 0);
-    var x = (W - rowW) / 2;
-    if (order) { this.find('shuffle').place(x, y + (big - small) / 2, small, small); x += small + gap; }
-    this.find('prev').place(x, y + (big - small) / 2, small, small); x += small + gap;
-    this.find('play').place(x, y, big, big); x += big + gap;
-    this.find('next').place(x, y + (big - small) / 2, small, small); x += small + gap;
-    if (order) this.find('repeat').place(x, y + (big - small) / 2, small, small);
+    var x = ox + (W - rowW) / 2, by = oy + y;
+    if (order) { this.find('shuffle').place(x, by + (big - small) / 2, small, small); x += small + gap; }
+    this.find('prev').place(x, by + (big - small) / 2, small, small); x += small + gap;
+    this.find('play').place(x, by, big, big); x += big + gap;
+    this.find('next').place(x, by + (big - small) / 2, small, small); x += small + gap;
+    if (order) this.find('repeat').place(x, by + (big - small) / 2, small, small);
     y += big + px(16);
 
     var vw = Math.min(px(180), W - pad * 2 - px(56));
     this.showVol = vw > px(50) && y + px(12) < H;
     this.rcVol = this.showVol
-        ? { x: Math.round((W - vw) / 2 + px(14)), y: Math.round(y), w: vw, h: px(4) }
+        ? { x: Math.round(ox + (W - vw) / 2 + px(14)), y: Math.round(oy + y), w: vw, h: px(4) }
         : { x: 0, y: 0, w: 0, h: 0 };
 };
 
 Player.prototype.layoutBar = function (W, H) {
+    var ox = this.ox, oy = this.oy;
     var pad = px(8);
     var size = clamp(H - pad * 2, px(24), px(40));
     var big = Math.min(size * 1.15, H - pad * 2);
@@ -518,8 +526,8 @@ Player.prototype.layoutBar = function (W, H) {
     this.showOrder = W > px(420);
     this.artSize = 0;
 
-    var cy = H / 2;
-    var x = pad;
+    var cy = oy + H / 2;
+    var x = ox + pad;
     this.find('prev').place(x, cy - size / 2, size, size); x += size + gap;
     this.find('play').place(x, cy - big / 2, big, big); x += big + gap;
     this.find('next').place(x, cy - size / 2, size, size); x += size + gap;
@@ -534,28 +542,28 @@ Player.prototype.layoutBar = function (W, H) {
     }
     var leftEnd = x;
 
-    var rightStart = W - pad;
+    var rightStart = ox + W - pad;
     if (this.showOrder) {
-        this.find('repeat').place(W - pad - size, cy - size / 2, size, size);
-        this.find('shuffle').place(W - pad - size * 2 - gap, cy - size / 2, size, size);
-        rightStart = W - pad - size * 2 - gap;
+        this.find('repeat').place(ox + W - pad - size, cy - size / 2, size, size);
+        this.find('shuffle').place(ox + W - pad - size * 2 - gap, cy - size / 2, size, size);
+        rightStart = ox + W - pad - size * 2 - gap;
     }
 
     var avail = rightStart - leftEnd - px(28);
     var cw = clamp(avail, px(150), px(520));
     var cx = leftEnd + px(14) + Math.max(0, (avail - cw) / 2);
     var ch = H - pad * 2;
-    this.card = { x: Math.round(cx), y: pad, w: Math.round(cw), h: ch, visible: avail > px(140) };
+    this.card = { x: Math.round(cx), y: oy + pad, w: Math.round(cw), h: ch, visible: avail > px(140) };
 
     var ar = Math.max(0, ch - px(10));
-    this.rcArt = { x: Math.round(cx + px(5)), y: pad + px(5), w: ar, h: ar };
+    this.rcArt = { x: Math.round(cx + px(5)), y: oy + pad + px(5), w: ar, h: ar };
 
     var tx = cx + px(5) + ar + px(10);
     var tw = Math.max(px(40), cx + cw - px(10) - tx);
     this.cardText = { x: Math.round(tx), w: Math.round(tw) };
-    this.cardTitleY = pad + Math.max(px(3), (ch - px(12) - px(32)) / 2);
+    this.cardTitleY = oy + pad + Math.max(px(3), (ch - px(12) - px(32)) / 2);
     this.cardArtistY = this.cardTitleY + px(17);
-    this.rcSeek = { x: Math.round(tx + px(34)), y: Math.round(pad + ch - px(10)),
+    this.rcSeek = { x: Math.round(tx + px(34)), y: Math.round(oy + pad + ch - px(10)),
                     w: Math.max(0, Math.round(tw - px(70))), h: px(3) };
 };
 
@@ -580,12 +588,12 @@ Player.prototype.volIcon = function () {
 };
 
 Player.prototype.paint = function (gr) {
-    gr.Clear(colours.bg);
+    gr.FillRectangle(this.ox, this.oy, this.W, this.H, colours.bg);
     this.bar ? this.paintBar(gr) : this.paintFull(gr);
 };
 
 Player.prototype.paintFull = function (gr) {
-    var W = this.W, pad = px(22), playing = !!this.metadb;
+    var W = this.W, x0 = this.ox, pad = px(22), playing = !!this.metadb;
     var title = playing ? evalTf(tf.title, this.metadb) : '재생 중인 항목 없음';
     var artist = playing ? evalTf(tf.artist, this.metadb) : '';
     var album = playing ? evalTf(tf.album, this.metadb) : '';
@@ -602,9 +610,9 @@ Player.prototype.paintFull = function (gr) {
         }
     }
 
-    drawText(gr, title, fonts.huge, colours.text, pad, this.titleY, W - pad * 2, px(26), TEXT_CENTRE);
+    drawText(gr, title, fonts.huge, colours.text, x0 + pad, this.titleY, W - pad * 2, px(26), TEXT_CENTRE);
     var sub = artist + (album && artist ? ' — ' + album : album);
-    drawText(gr, sub, fonts.body, colours.sub, pad, this.artistY, W - pad * 2, px(20), TEXT_CENTRE);
+    drawText(gr, sub, fonts.body, colours.sub, x0 + pad, this.artistY, W - pad * 2, px(20), TEXT_CENTRE);
 
     var ratio = this.seekRatio(), len = fb.PlaybackLength;
     this.slider(gr, this.rcSeek, ratio, this.hover === 'seek' || this.dragSeek, ACCENT);
@@ -820,12 +828,18 @@ Playlist.prototype.artDone = function (metadb, image) {
     window.Repaint();
 };
 
+Playlist.prototype.setViewport = function (x, y, w, h) {
+    this.ox = x; this.oy = y;
+    this.layout(w, h);
+};
+
 Playlist.prototype.layout = function (W, H) {
     this.W = W; this.H = H;
+    if (this.ox === undefined) { this.ox = 0; this.oy = 0; }
     this.pad = px(16);
     this.headerH = H > px(240) ? px(62) : 0;
     this.colsH = H > px(160) ? px(24) : 0;
-    this.top = this.headerH + this.colsH;
+    this.top = this.oy + this.headerH + this.colsH;
     this.view = Math.max(0, H - this.top);
     this.showAlbum = W > px(560);
     this.showThumb = props.rowArt && this.rowH >= px(36) && W > px(260);
@@ -851,31 +865,31 @@ Playlist.prototype.rowAt = function (y) {
 };
 
 Playlist.prototype.paint = function (gr) {
-    var W = this.W, H = this.H;
-    gr.Clear(colours.bg);
+    var W = this.W, H = this.H, x0 = this.ox, y0 = this.oy;
+    gr.FillRectangle(x0, y0, W, H, colours.bg);
 
     if (this.headerH) {
         drawText(gr, this.name || '재생목록', fonts.huge, colours.text,
-            this.pad, px(10), W - this.pad * 2, px(26), TEXT_LEFT);
+            x0 + this.pad, y0 + px(10), W - this.pad * 2, px(26), TEXT_LEFT);
         drawText(gr, this.count + '곡', fonts.small, colours.sub,
-            this.pad, px(34), W - this.pad * 2, px(18), TEXT_LEFT);
+            x0 + this.pad, y0 + px(34), W - this.pad * 2, px(18), TEXT_LEFT);
     }
     if (this.colsH) {
-        var cy = this.headerH;
+        var cy = y0 + this.headerH;
         drawText(gr, '노래', fonts.tiny, colours.sub,
-            this.pad + (this.showThumb ? this.rowH - px(4) : px(2)), cy, px(120), this.colsH, TEXT_LEFT);
+            x0 + this.pad + (this.showThumb ? this.rowH - px(4) : px(2)), cy, px(120), this.colsH, TEXT_LEFT);
         if (this.showAlbum) {
             drawText(gr, '앨범', fonts.tiny, colours.sub,
-                W - this.pad - this.durW - px(8) - this.albumW, cy, this.albumW, this.colsH, TEXT_LEFT);
+                x0 + W - this.pad - this.durW - px(8) - this.albumW, cy, this.albumW, this.colsH, TEXT_LEFT);
         }
         drawText(gr, '시간', fonts.tiny, colours.sub,
-            W - this.pad - this.durW, cy, this.durW, this.colsH, TEXT_RIGHT);
-        gr.FillRectangle(this.pad, cy + this.colsH - 1, W - this.pad * 2, 1, colours.line);
+            x0 + W - this.pad - this.durW, cy, this.durW, this.colsH, TEXT_RIGHT);
+        gr.FillRectangle(x0 + this.pad, cy + this.colsH - 1, W - this.pad * 2, 1, colours.line);
     }
 
     if (!this.count) {
         drawText(gr, '재생목록이 비어 있습니다', fonts.body, colours.sub,
-            0, this.top, W, px(40), TEXT_CENTRE);
+            x0, this.top, W, px(40), TEXT_CENTRE);
         return;
     }
 
@@ -892,7 +906,7 @@ Playlist.prototype.paint = function (gr) {
 
 Playlist.prototype.paintRow = function (gr, i, playingIdx) {
     var y = this.top + i * this.rowH - this.scroll;
-    var W = this.W, rowH = this.rowH, pad = this.pad;
+    var W = this.W, x0 = this.ox, rowH = this.rowH, pad = this.pad;
     var r = this.row(i);
     var selected = false;
     try { selected = plman.IsPlaylistItemSelected(this.pl, i); } catch (e) {}
@@ -900,11 +914,11 @@ Playlist.prototype.paintRow = function (gr, i, playingIdx) {
     var live = fb.IsPlaying && !fb.IsPaused;
 
     if (selected || this.hoverRow === i) {
-        fillRound(gr, pad - px(6), y + px(2), W - (pad - px(6)) * 2, rowH - px(4), px(7),
+        fillRound(gr, x0 + pad - px(6), y + px(2), W - (pad - px(6)) * 2, rowH - px(4), px(7),
             selected ? colours.sel : colours.hover);
     }
 
-    var x = pad;
+    var x = x0 + pad;
     if (this.showThumb) {
         var ts = rowH - px(12);
         if (!drawArt(gr, this.thumb(r, ts), x, y + px(6), ts, px(3))) {
@@ -921,7 +935,7 @@ Playlist.prototype.paintRow = function (gr, i, playingIdx) {
         x += px(18);
     }
 
-    var right = W - pad - this.durW - px(8);
+    var right = x0 + W - pad - this.durW - px(8);
     if (this.showAlbum) right -= this.albumW + px(8);
     var tw = Math.max(px(40), right - x);
 
@@ -937,10 +951,10 @@ Playlist.prototype.paintRow = function (gr, i, playingIdx) {
 
     if (this.showAlbum) {
         drawText(gr, r.album, fonts.small, colours.sub,
-            W - pad - this.durW - px(8) - this.albumW, y, this.albumW, rowH, TEXT_LEFT);
+            x0 + W - pad - this.durW - px(8) - this.albumW, y, this.albumW, rowH, TEXT_LEFT);
     }
     drawText(gr, r.length, fonts.small, colours.sub,
-        W - pad - this.durW, y, this.durW, rowH, TEXT_RIGHT);
+        x0 + W - pad - this.durW, y, this.durW, rowH, TEXT_RIGHT);
 };
 
 Playlist.prototype.barRect = function () {
@@ -948,7 +962,7 @@ Playlist.prototype.barRect = function () {
     if (m <= 0 || this.view <= 0) return null;
     var total = this.count * this.rowH;
     var h = Math.max(px(28), this.view * this.view / total);
-    return { x: this.W - px(7), y: this.top + (this.view - h) * (this.scroll / m), w: px(4), h: h };
+    return { x: this.ox + this.W - px(7), y: this.top + (this.view - h) * (this.scroll / m), w: px(4), h: h };
 };
 
 Playlist.prototype.wheel = function (step) {
@@ -1079,21 +1093,130 @@ Playlist.prototype.key = function (vkey) {
     }
 };
 
+// -------------------------------------------------------------- COMPOSITE ---
+//  Default UI starts life as a single area, and splitting it up is fiddly.
+//  This mode puts the whole thing — transport bar, now playing, track list —
+//  inside one panel, so pasting the script into that one area is enough.
+
+function Composite() {
+    this.bar = new Player(true);
+    this.player = new Player(false);
+    this.list = new Playlist();
+    this.parts = [];
+    this.captured = null;
+    this.hover = '';
+}
+
+Composite.prototype.layout = function (W, H) {
+    this.W = W; this.H = H;
+    var barH = clamp(Math.round(H * 0.15), px(58), px(92));
+    if (H < px(300)) barH = Math.max(px(46), Math.round(H * 0.26));
+    var sideW = W >= px(620) ? clamp(Math.round(W * 0.29), px(240), px(360)) : 0;
+    this.barH = barH; this.sideW = sideW;
+
+    this.bar.setViewport(0, 0, W, barH);
+    if (sideW > 0) {
+        this.player.setViewport(0, barH + 1, sideW, H - barH - 1);
+        this.list.setViewport(sideW + 1, barH + 1, W - sideW - 1, H - barH - 1);
+        this.parts = [this.bar, this.player, this.list];
+    } else {
+        this.list.setViewport(0, barH + 1, W, H - barH - 1);
+        this.parts = [this.bar, this.list];
+    }
+};
+
+Composite.prototype.paint = function (gr) {
+    for (var i = 0; i < this.parts.length; i++) this.parts[i].paint(gr);
+    gr.FillRectangle(0, this.barH, this.W, 1, colours.line);
+    if (this.sideW > 0) gr.FillRectangle(this.sideW, this.barH, 1, this.H - this.barH, colours.line);
+};
+
+Composite.prototype.partAt = function (x, y) {
+    for (var i = 0; i < this.parts.length; i++) {
+        var p = this.parts[i];
+        if (x >= p.ox && x < p.ox + p.W && y >= p.oy && y < p.oy + p.H) return p;
+    }
+    return null;
+};
+
+Composite.prototype.move = function (x, y, mask) {
+    var p = this.captured || this.partAt(x, y);
+    for (var i = 0; i < this.parts.length; i++) {
+        if (this.parts[i] !== p && this.parts[i].leave) this.parts[i].leave();
+    }
+    if (p && p.move) p.move(x, y, mask);
+    this.hoverPart = p;
+    this.hover = (p && p.hover) || '';
+};
+
+Composite.prototype.leave = function () {
+    for (var i = 0; i < this.parts.length; i++) {
+        if (this.parts[i].leave) this.parts[i].leave();
+    }
+    this.hoverPart = null;
+    this.hover = '';
+};
+
+Composite.prototype.down = function (x, y, mask) {
+    this.captured = this.partAt(x, y);
+    if (this.captured && this.captured.down) this.captured.down(x, y, mask);
+};
+
+Composite.prototype.up = function (x, y, mask) {
+    var p = this.captured || this.partAt(x, y);
+    if (p && p.up) p.up(x, y, mask);
+    this.captured = null;
+};
+
+Composite.prototype.dblclick = function (x, y, mask) {
+    var p = this.partAt(x, y);
+    if (p && p.dblclick) p.dblclick(x, y, mask);
+};
+
+Composite.prototype.wheel = function (step) {
+    var p = this.hoverPart || this.list;
+    if (p && p.wheel) p.wheel(step);
+};
+
+Composite.prototype.contextMenu = function (x, y) {
+    var p = this.partAt(x, y);
+    return !!(p && p.contextMenu && p.contextMenu(x, y));
+};
+
+Composite.prototype.key = function (vkey) { this.list.key(vkey); };
+Composite.prototype.refresh = function () { this.list.refresh(); };
+Composite.prototype.artDone = function (metadb, image) { this.list.artDone(metadb, image); };
+
+Composite.prototype.setTrack = function (handle) {
+    this.bar.setTrack(handle);
+    this.player.setTrack(handle);
+};
+
+Composite.prototype.tick = function () {
+    for (var i = 0; i < this.parts.length; i++) {
+        if (this.parts[i].tick) this.parts[i].tick();
+    }
+};
+
 // ------------------------------------------------------------- THE PANEL ----
 
 var panel = null, panelKind = '', timerId = null, reportedError = '';
 
 function resolveMode(W, H) {
     var m = ('' + props.mode).toLowerCase();
-    if (m === 'player' || m === 'bar' || m === 'list') return m;
-    return (H <= px(150) && W > px(340)) ? 'bar' : 'player';
+    if (m === 'all' || m === 'player' || m === 'bar' || m === 'list') return m;
+    if (H <= px(150) && W > px(340)) return 'bar';
+    if (W >= px(560) && H >= px(360)) return 'all';   // a whole window: draw everything
+    return 'player';
 }
 
 function buildPanel(W, H) {
     var kind = resolveMode(W, H);
     if (kind !== panelKind || !panel) {
         panelKind = kind;
-        panel = kind === 'list' ? new Playlist() : new Player(kind === 'bar');
+        panel = kind === 'all' ? new Composite()
+              : kind === 'list' ? new Playlist()
+              : new Player(kind === 'bar');
     }
     panel.layout(W, H);
 }
@@ -1125,14 +1248,14 @@ function showPanelMenu(x, y) {
         theme.CheckMenuRadioItem(1, 2, props.theme === 'light' ? 2 : 1);
         theme.AppendTo(menu, MF_STRING, '테마');
 
-        var modes = ['auto', 'player', 'bar', 'list'];
-        var labels = ['자동', '플레이어 (세로)', '바 (가로)', '재생목록'];
+        var modes = ['auto', 'all', 'player', 'bar', 'list'];
+        var labels = ['자동', '전체 (한 패널에 전부)', '플레이어 (세로)', '바 (가로)', '재생목록'];
         var cur = 0;
         for (var i = 0; i < modes.length; i++) {
             mode.AppendMenuItem(MF_STRING, 10 + i, labels[i]);
             if (modes[i] === props.mode) cur = i;
         }
-        mode.CheckMenuRadioItem(10, 13, 10 + cur);
+        mode.CheckMenuRadioItem(10, 10 + modes.length - 1, 10 + cur);
         mode.AppendTo(menu, MF_STRING, '패널 모드');
 
         menu.AppendMenuSeparator();
@@ -1142,7 +1265,7 @@ function showPanelMenu(x, y) {
         var id = menu.TrackPopupMenu(x, y);
         if (id === 1) applyTheme('dark');
         else if (id === 2) applyTheme('light');
-        else if (id >= 10 && id <= 13) setMode(modes[id - 10]);
+        else if (id >= 10 && id < 10 + modes.length) setMode(modes[id - 10]);
         else if (id === 20) window.ShowProperties();
         else if (id === 21) window.ShowConfigure();
         return true;
