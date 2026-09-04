@@ -1,0 +1,2045 @@
+<title>Apple Music UI for foobar2000</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+  :root {
+    --ground: #f6f4f4;
+    --surface: #ffffff;
+    --ink: #1a1619;
+    --muted: #6d666a;
+    --line: #e6e0e2;
+    --accent: #fa243c;
+    --accent-soft: rgba(250, 36, 60, .09);
+    --shadow: 0 24px 60px -28px rgba(26, 22, 25, .45);
+    --sans: "Archivo", "Noto Sans KR", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+  }
+  :root:not([data-theme="light"]) {
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #121013;
+      --surface: #1a171b;
+      --ink: #f2eef0;
+      --muted: #9a9198;
+      --line: #2b262b;
+      --accent: #ff4d61;
+      --accent-soft: rgba(255, 77, 97, .13);
+      --shadow: 0 24px 60px -28px rgba(0, 0, 0, .8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #121013;
+    --surface: #1a171b;
+    --ink: #f2eef0;
+    --muted: #9a9198;
+    --line: #2b262b;
+    --accent: #ff4d61;
+    --accent-soft: rgba(255, 77, 97, .13);
+    --shadow: 0 24px 60px -28px rgba(0, 0, 0, .8);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 56px 24px 80px; }
+
+  /* ---------- masthead ---------- */
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 14px;
+  }
+  .eyebrow b { color: var(--accent); font-weight: 500; }
+  h1 {
+    font-size: clamp(34px, 5.4vw, 58px);
+    font-weight: 700;
+    letter-spacing: -.035em;
+    line-height: 1.04;
+    margin: 0 0 18px;
+    text-wrap: balance;
+  }
+  .dek { max-width: 60ch; color: var(--muted); margin: 0; font-size: 16px; }
+  .dek strong { color: var(--ink); font-weight: 500; }
+
+  /* ---------- control strip ---------- */
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+    margin: 34px 0 16px;
+    padding-top: 22px;
+    border-top: 1px solid var(--line);
+  }
+  .ctl-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .seg { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+  .seg button {
+    font: 500 13px/1 var(--sans);
+    color: var(--muted);
+    background: none; border: 0; cursor: pointer;
+    padding: 7px 15px; border-radius: 999px;
+  }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--ground); }
+  .seg button:focus-visible, .pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    font: 500 13px/1 var(--sans);
+    background: var(--surface); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 999px;
+    padding: 8px 16px; cursor: pointer;
+  }
+  .pill:hover { border-color: var(--accent); color: var(--accent); }
+  .now {
+    font-family: var(--mono); font-size: 12px; color: var(--muted);
+    margin-left: auto; display: flex; align-items: center; gap: 8px;
+    max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  }
+  .beat { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex: none; }
+
+  /* ---------- the mock window ---------- */
+  .win {
+    --chrome: #232326; --chrome-ink: #9d9da3; --divider: rgba(255,255,255,.07); --frame: #000;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--frame);
+  }
+  .win[data-skin="light"] { --chrome: #ededf0; --chrome-ink: #6b6b70; --divider: rgba(0,0,0,.10); --frame: rgba(0,0,0,.14); }
+  .titlebar {
+    height: 36px; background: var(--chrome); color: var(--chrome-ink);
+    display: flex; align-items: center; padding: 0 6px 0 14px;
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: .02em;
+  }
+  .titlebar .wbtns { margin-left: auto; display: flex; }
+  .titlebar .wbtns span { width: 40px; text-align: center; font-size: 11px; }
+  .panels {
+    display: grid;
+    grid-template-columns: 320px 1px 1fr;
+    grid-template-rows: 96px 1px 520px;
+    background: var(--divider);
+  }
+  .cell { position: relative; overflow: hidden; }
+  .cell canvas { display: block; width: 100%; height: 100%; }
+  .c-bar { grid-column: 1 / 4; grid-row: 1; }
+  .h-div { grid-column: 1 / 4; grid-row: 2; }
+  .c-player { grid-column: 1; grid-row: 3; }
+  .v-div { grid-column: 2; grid-row: 3; }
+  .c-list { grid-column: 3; grid-row: 3; }
+  .tag {
+    position: absolute; top: 8px; right: 10px;
+    font-family: var(--mono); font-size: 10px; letter-spacing: .08em;
+    color: var(--chrome-ink); opacity: .0; transition: opacity .18s ease;
+    pointer-events: none; background: var(--chrome); padding: 2px 7px; border-radius: 4px;
+  }
+  .cell:hover .tag { opacity: .85; }
+  .hint {
+    font-family: var(--mono); font-size: 11.5px; color: var(--muted);
+    margin: 12px 2px 0; display: flex; gap: 8px; align-items: baseline;
+  }
+  .hint b { color: var(--accent); font-weight: 500; }
+
+  /* ---------- modes ---------- */
+  .modes {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+    background: var(--line); border: 1px solid var(--line); border-radius: 10px;
+    overflow: hidden; margin: 56px 0 0;
+  }
+  .mode { background: var(--surface); padding: 22px 22px 24px; }
+  .mode code {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .06em;
+    color: var(--accent); background: var(--accent-soft);
+    padding: 3px 8px; border-radius: 5px;
+  }
+  .mode h3 { font-size: 16px; font-weight: 600; margin: 14px 0 6px; letter-spacing: -.01em; }
+  .mode p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.6; }
+
+  /* ---------- try it ---------- */
+  .cols { display: grid; grid-template-columns: 1.05fr 1fr; gap: 48px; margin-top: 56px; }
+  h2 { font-size: 20px; font-weight: 700; letter-spacing: -.02em; margin: 0 0 18px; }
+  .gestures { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 10px 18px; align-items: baseline; }
+  .gestures dt { font-family: var(--mono); font-size: 12px; color: var(--ink); white-space: nowrap; }
+  .gestures dd { margin: 0; color: var(--muted); font-size: 14px; }
+  .note { border-left: 2px solid var(--accent); padding: 2px 0 2px 16px; color: var(--muted); font-size: 14px; }
+  .note strong { color: var(--ink); font-weight: 500; }
+  .files { margin-top: 22px; font-family: var(--mono); font-size: 12.5px; color: var(--muted); line-height: 2; }
+  .files span { color: var(--ink); }
+  footer { margin-top: 64px; padding-top: 22px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; font-family: var(--mono); }
+
+  @media (max-width: 900px) {
+    .wrap { padding: 40px 16px 56px; }
+    .panels { grid-template-columns: 1fr; grid-template-rows: 88px 1px 300px 1px 360px; }
+    .c-bar { grid-column: 1; grid-row: 1; }
+    .h-div { grid-column: 1; grid-row: 2; }
+    .c-player { grid-column: 1; grid-row: 3; }
+    .v-div { grid-column: 1; grid-row: 4; }
+    .c-list { grid-column: 1; grid-row: 5; }
+    .modes { grid-template-columns: 1fr; }
+    .cols { grid-template-columns: 1fr; gap: 36px; }
+    .now { margin-left: 0; width: 100%; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">foobar2000 &middot; <b>foo_jscript_panel3</b> &middot; 라이브 미리보기</p>
+  <h1>foobar2000을<br>Apple Music처럼</h1>
+  <p class="dek">아래 창은 그림이 아닙니다. 저장소의 <strong>apple-music.js</strong>를 그대로 캔버스 위에서 실행한 화면이라,
+    실제 foobar2000에 붙여넣었을 때와 같은 코드가 같은 레이아웃을 그립니다. 재생바를 끌고, 곡을 더블클릭해 보세요.</p>
+
+  <div class="controls">
+    <span class="ctl-label">패널 테마</span>
+    <div class="seg" role="group" aria-label="패널 테마">
+      <button id="skin-dark" aria-pressed="true">다크</button>
+      <button id="skin-light" aria-pressed="false">라이트</button>
+    </div>
+    <button class="pill" id="toggle-play">일시정지</button>
+    <p class="now"><span class="beat" id="beat"></span><span id="now-text">—</span></p>
+  </div>
+
+  <div class="win" id="win" data-skin="dark">
+    <div class="titlebar"><span>foobar2000</span><span class="wbtns"><span>&#8211;</span><span>&#9723;</span><span>&#10005;</span></span></div>
+    <div class="panels">
+      <div class="cell c-bar"><canvas id="cv-bar" aria-label="상단 트랜스포트 바 패널"></canvas><span class="tag">mode: bar</span></div>
+      <div class="h-div"></div>
+      <div class="cell c-player"><canvas id="cv-player" aria-label="나우플레잉 패널"></canvas><span class="tag">mode: player</span></div>
+      <div class="v-div"></div>
+      <div class="cell c-list"><canvas id="cv-list" aria-label="재생목록 패널"></canvas><span class="tag">mode: list</span></div>
+    </div>
+  </div>
+  <p class="hint"><b>&#9679;</b> 세 패널 모두 같은 파일 하나입니다. 속성에서 모드만 다르게 지정했습니다.</p>
+
+  <div class="modes">
+    <div class="mode">
+      <code>mode: bar</code>
+      <h3>상단 트랜스포트 바</h3>
+      <p>왼쪽에 이전/재생/다음과 볼륨, 가운데 라운드 카드에 앨범아트·제목·진행바, 오른쪽에 셔플과 반복.
+        Apple Music 상단 바 구성 그대로입니다. 폭이 좁아지면 볼륨 → 셔플/반복 순으로 접힙니다.</p>
+    </div>
+    <div class="mode">
+      <code>mode: player</code>
+      <h3>세로형 나우플레잉</h3>
+      <p>라운드 코너 앨범아트에 부드러운 드롭섀도, 그 아래 제목과 아티스트, 얇은 탐색바.
+        커서를 올리면 탐색바에 썸이 나타나고, 남은 시간이 음수로 표시됩니다.</p>
+    </div>
+    <div class="mode">
+      <code>mode: list</code>
+      <h3>트랙 리스트</h3>
+      <p>썸네일과 제목/아티스트 2단 행, 앨범·시간 컬럼. 재생 중인 곡은 썸네일 위 이퀄라이저로 표시되고,
+        호버와 선택은 라운드 하이라이트로 그립니다. 스크롤에는 관성이 붙습니다.</p>
+    </div>
+  </div>
+
+  <div class="cols">
+    <section>
+      <h2>직접 해보기</h2>
+      <dl class="gestures">
+        <dt>드래그</dt><dd>탐색바·볼륨 슬라이더</dd>
+        <dt>휠</dt><dd>탐색바 위에선 5초 이동, 리스트에선 스크롤</dd>
+        <dt>더블클릭</dt><dd>리스트의 곡 재생</dd>
+        <dt>클릭</dt><dd>선택 &middot; Ctrl 토글 &middot; Shift 범위</dd>
+        <dt>셔플/반복</dt><dd>바 오른쪽 두 아이콘, 켜지면 액센트 색</dd>
+      </dl>
+      <p class="note" style="margin-top:22px">우클릭 메뉴는 이 미리보기에서 열리지 않습니다.
+        실제 foobar2000에서는 <strong>패널 우클릭</strong>으로 테마·모드를 바꾸고,
+        리스트에서는 태그 편집·변환 같은 <strong>foobar2000 기본 컨텍스트 메뉴</strong>가 그대로 나옵니다.</p>
+    </section>
+    <section>
+      <h2>차이 나는 부분</h2>
+      <p class="note" style="border-color:var(--line)">아이콘은 폰트 글리프가 아니라 전부 벡터로 그립니다.
+        Segoe MDL2가 없는 PC에서도 같은 모양이 나오고, 고DPI에서 뭉개지지 않습니다.
+        재생 중 이퀄라이저 막대, 셔플의 화살촉, 반복의 끊긴 고리까지 모두 코드로 그린 도형입니다.</p>
+      <div class="files">
+        github.com/<span>InhyeokKang/foobar2000_ui</span><br>
+        <span>apple-music.js</span> &middot; 패널 스크립트 (이 파일 하나면 됩니다)<br>
+        <span>README.md</span> &middot; 설치 가이드<br>
+        <span>preview.html</span> &middot; 이 페이지
+      </div>
+    </section>
+  </div>
+
+  <footer>미리보기는 GDI+ 호출을 Canvas 2D로 옮긴 얇은 shim 위에서 원본 스크립트를 그대로 구동합니다 &middot; 곡 정보는 데모용 샘플입니다</footer>
+</div>
+
+<script>
+/* ============================================================
+   apple-music.js — the real panel script, wrapped so that its
+   `window` is the mock host instead of the browser window.
+   ============================================================ */
+function makePanel(window, fb, gdi, utils, plman, console) {
+// =============================================================================
+//  Apple Music style player for foobar2000
+// -----------------------------------------------------------------------------
+//  A single script that renders three different panels depending on the
+//  "Apple Music.Mode" property:
+//
+//      player  - portrait "now playing" panel (big artwork + controls)
+//      bar     - compact horizontal transport bar with a centred LCD card
+//      list    - Apple Music style playlist / track list
+//      auto    - picks "bar" or "player" from the panel proportions
+//
+//  Tested with JScript Panel 3 (foobar2000 v2). Written in plain ES5 so it also
+//  runs on JScript Panel 2 and Spider Monkey Panel (foobar2000 v1.6).
+//  Every host specific call is feature detected, see the COMPAT section.
+//
+//  Right click the panel for theme / mode options.
+// =============================================================================
+
+// ----------------------------------------------------------------- COMPAT ---
+
+function startTimer(fn, delay) {
+    if (typeof window.SetInterval === 'function') return window.SetInterval(fn, delay);
+    return setInterval(fn, delay);
+}
+
+function stopTimer(id) {
+    if (id == null) return;
+    try {
+        if (typeof window.ClearInterval === 'function') window.ClearInterval(id);
+        else clearInterval(id);
+    } catch (e) {}
+}
+
+function fontExists(name) {
+    try { if (typeof utils.CheckFont === 'function') return utils.CheckFont(name); } catch (e) {}
+    return true;
+}
+
+// Accepts a comma separated wish list, returns the first font that exists.
+function makeFont(list, size, style) {
+    var names = list.split(',');
+    for (var i = 0; i < names.length; i++) {
+        var n = names[i].replace(/^\s+|\s+$/g, '');
+        if (!n || !fontExists(n)) continue;
+        try { return gdi.Font(n, size, style || 0); } catch (e) {}
+    }
+    try { return gdi.Font('Segoe UI', size, style || 0); } catch (e) { return null; }
+}
+
+function getArt(handle) {
+    if (!handle) return null;
+    var img = null;
+    try { if (typeof utils.GetAlbumArtV2 === 'function') img = utils.GetAlbumArtV2(handle, 0); } catch (e) {}
+    if (!img) { try { if (typeof utils.GetAlbumArtV2 === 'function') img = utils.GetAlbumArtV2(handle, 4); } catch (e) {} }
+    if (!img) { try { if (typeof utils.GetAlbumArtEmbedded === 'function') img = utils.GetAlbumArtEmbedded(handle.Path, 0); } catch (e) {} }
+    return img;
+}
+
+function playingLocation() {
+    try {
+        var loc = plman.GetPlayingItemLocation();
+        if (loc && loc.IsValid) return { pl: loc.PlaylistIndex, item: loc.PlaylistItemIndex };
+    } catch (e) {}
+    return null;
+}
+
+// MetadbHandleList indexing differs between hosts.
+function listItem(list, i) {
+    try { if (typeof list.Item === 'function') return list.Item(i); } catch (e) {}
+    try { return list[i]; } catch (e) {}
+    return null;
+}
+
+function setCursorHand(on) {
+    try { window.SetCursor(on ? 32649 : 32512); } catch (e) {}
+}
+
+// ------------------------------------------------------------- PRIMITIVES ---
+
+function RGB(r, g, b) { return (0xff000000 | (r << 16) | (g << 8) | b); }
+function RGBA(r, g, b, a) { return ((a << 24) | (r << 16) | (g << 8) | b); }
+
+function alpha(colour, a) {
+    return RGBA((colour >> 16) & 0xff, (colour >> 8) & 0xff, colour & 0xff, a);
+}
+
+function blend(c1, c2, f) {
+    f = Math.max(0, Math.min(1, f));
+    var r = Math.round(((c1 >> 16) & 0xff) * (1 - f) + ((c2 >> 16) & 0xff) * f);
+    var g = Math.round(((c1 >> 8) & 0xff) * (1 - f) + ((c2 >> 8) & 0xff) * f);
+    var b = Math.round((c1 & 0xff) * (1 - f) + (c2 & 0xff) * f);
+    return RGB(r, g, b);
+}
+
+function hexColour(text, fallback) {
+    var m = /^#?([0-9a-fA-F]{6})$/.exec(text || '');
+    if (!m) return fallback;
+    var v = parseInt(m[1], 16);
+    return RGB((v >> 16) & 0xff, (v >> 8) & 0xff, v & 0xff);
+}
+
+function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
+
+function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+
+function fmtTime(t) {
+    if (!isFinite(t) || t < 0) t = 0;
+    t = Math.floor(t);
+    var s = t % 60, m = Math.floor(t / 60), h = Math.floor(m / 60);
+    if (h > 0) return h + ':' + pad2(m % 60) + ':' + pad2(s);
+    return m + ':' + pad2(s);
+}
+
+// Rounded rectangle that never throws on small sizes.
+function fillRound(gr, x, y, w, h, r, colour) {
+    if (w <= 0 || h <= 0) return;
+    r = Math.min(r, Math.floor(w / 2) - 1, Math.floor(h / 2) - 1);
+    if (r < 1) { gr.FillSolidRect(x, y, w, h, colour); return; }
+    try { gr.FillRoundRect(x, y, w - 1, h - 1, r, r, colour); }
+    catch (e) { gr.FillSolidRect(x, y, w, h, colour); }
+}
+
+function drawRound(gr, x, y, w, h, r, lw, colour) {
+    if (w <= 0 || h <= 0) return;
+    r = Math.min(r, Math.floor(w / 2) - 1, Math.floor(h / 2) - 1);
+    if (r < 1) return;
+    try { gr.DrawRoundRect(x, y, w - 1, h - 1, r, r, lw, colour); } catch (e) {}
+}
+
+// GDI text. Flags are the usual DT_* constants.
+var DT_LEFT = 0x00000000, DT_CENTER = 0x00000001, DT_RIGHT = 0x00000002,
+    DT_VCENTER = 0x00000004, DT_WORDBREAK = 0x00000010, DT_SINGLELINE = 0x00000020,
+    DT_CALCRECT = 0x00000400, DT_NOPREFIX = 0x00000800, DT_END_ELLIPSIS = 0x00008000;
+var DT_LINE = DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX | DT_END_ELLIPSIS;
+
+function drawText(gr, text, font, colour, x, y, w, h, flags) {
+    if (text == null || text === '' || !font || w <= 0 || h <= 0) return;
+    try {
+        gr.GdiDrawText('' + text, font, colour, Math.round(x), Math.round(y),
+            Math.round(w), Math.round(h), flags == null ? DT_LINE : flags);
+    } catch (e) {
+        try { gr.DrawString('' + text, font, colour, x, y, w, h); } catch (e2) {}
+    }
+}
+
+function textWidth(gr, text, font) {
+    if (!text || !font) return 0;
+    try { return gr.CalcTextWidth('' + text, font); } catch (e) { return 0; }
+}
+
+// ------------------------------------------------------------ ARTWORK -------
+
+var maskCache = {};
+
+function roundMask(size, radius) {
+    var key = size + '_' + radius;
+    if (maskCache[key]) return maskCache[key];
+    try {
+        var m = gdi.CreateImage(size, size);
+        var g = m.GetGraphics();
+        g.SetSmoothingMode(2);
+        g.FillSolidRect(0, 0, size, size, RGB(255, 255, 255));
+        fillRound(g, 0, 0, size, size, radius, RGB(0, 0, 0));
+        m.ReleaseGraphics(g);
+        maskCache[key] = m;
+        return m;
+    } catch (e) { return null; }
+}
+
+// Centre-crops to a square, resizes and rounds the corners.
+function squareArt(img, size, radius) {
+    if (!img || size < 4) return null;
+    try {
+        var bmp = gdi.CreateImage(size, size);
+        var g = bmp.GetGraphics();
+        try { g.SetInterpolationMode(7); } catch (e) {}
+        var sw = img.Width, sh = img.Height, s = Math.min(sw, sh);
+        g.DrawImage(img, 0, 0, size, size, (sw - s) / 2, (sh - s) / 2, s, s);
+        bmp.ReleaseGraphics(g);
+        if (radius > 0) {
+            var mask = roundMask(size, radius);
+            if (mask) { try { bmp.ApplyMask(mask); } catch (e) {} }
+        }
+        return bmp;
+    } catch (e) {
+        try { return img.Resize(size, size); } catch (e2) { return img; }
+    }
+}
+
+// --------------------------------------------------------------- THEMES -----
+
+var THEMES = {
+    dark: {
+        bg:      RGB(0x1c, 0x1c, 0x1e),
+        card:    RGB(0x2c, 0x2c, 0x2e),
+        hover:   RGB(0x2c, 0x2c, 0x2e),
+        sel:     RGB(0x3a, 0x3a, 0x3c),
+        line:    RGB(0x38, 0x38, 0x3a),
+        text:    RGB(0xf5, 0xf5, 0xf7),
+        sub:     RGB(0x98, 0x98, 0x9e),
+        icon:    RGB(0xe8, 0xe8, 0xed),
+        track:   RGB(0x48, 0x48, 0x4a),
+        shadow:  RGB(0, 0, 0)
+    },
+    light: {
+        bg:      RGB(0xff, 0xff, 0xff),
+        card:    RGB(0xf5, 0xf5, 0xf7),
+        hover:   RGB(0xf2, 0xf2, 0xf7),
+        sel:     RGB(0xe8, 0xe8, 0xed),
+        line:    RGB(0xe5, 0xe5, 0xea),
+        text:    RGB(0x1d, 0x1d, 0x1f),
+        sub:     RGB(0x6e, 0x6e, 0x73),
+        icon:    RGB(0x3a, 0x3a, 0x3c),
+        track:   RGB(0xd1, 0xd1, 0xd6),
+        shadow:  RGB(0x8e, 0x8e, 0x93)
+    }
+};
+
+// ------------------------------------------------------------ PROPERTIES ----
+
+var props = {
+    mode:      window.GetProperty('Apple Music.Mode (auto|player|bar|list)', 'auto'),
+    theme:     window.GetProperty('Apple Music.Theme (dark|light)', 'dark'),
+    accent:    window.GetProperty('Apple Music.Accent colour', '#FA243C'),
+    scale:     window.GetProperty('Apple Music.Scale %', 100),
+    rowHeight: window.GetProperty('Apple Music.List row height', 46),
+    rowArt:    window.GetProperty('Apple Music.List artwork', true),
+    fontFace:  window.GetProperty('Apple Music.Font', 'SF Pro Display, SF Pro Text, Pretendard, Apple SD Gothic Neo, Segoe UI Variable Display, Segoe UI, Malgun Gothic')
+};
+
+function setProp(name, value) { window.SetProperty(name, value); }
+
+var S = clamp(props.scale / 100, 0.5, 3);          // user scale
+function px(v) { return Math.round(v * S); }
+
+var colours = THEMES[props.theme === 'light' ? 'light' : 'dark'];
+var ACCENT = hexColour(props.accent, RGB(0xfa, 0x24, 0x3c));
+
+var fonts = {
+    huge:   makeFont(props.fontFace, Math.round(19 * S), 1),
+    title:  makeFont(props.fontFace, Math.round(13 * S), 1),
+    body:   makeFont(props.fontFace, Math.round(12 * S), 0),
+    small:  makeFont(props.fontFace, Math.round(10 * S), 0),
+    tiny:   makeFont(props.fontFace, Math.round(9 * S), 0)
+};
+
+function applyTheme(name) {
+    props.theme = name;
+    setProp('Apple Music.Theme (dark|light)', name);
+    colours = THEMES[name === 'light' ? 'light' : 'dark'];
+    artCache.reset();
+    window.Repaint();
+}
+
+// ---------------------------------------------------------------- ICONS -----
+//  All icons are drawn as vectors so they look identical on every machine and
+//  scale cleanly. (cx, cy) is the centre, "size" the nominal box size.
+
+function iconPlay(gr, cx, cy, size, c) {
+    var h = size * 0.46, w = size * 0.40;
+    gr.SetSmoothingMode(2);
+    gr.FillPolygon(c, 0, [cx - w * 0.75, cy - h, cx + w, cy, cx - w * 0.75, cy + h]);
+}
+
+function iconPause(gr, cx, cy, size, c) {
+    var w = size * 0.16, h = size * 0.90, gap = size * 0.18;
+    gr.SetSmoothingMode(2);
+    fillRound(gr, cx - gap / 2 - w, cy - h / 2, w, h, Math.max(1, w / 3), c);
+    fillRound(gr, cx + gap / 2, cy - h / 2, w, h, Math.max(1, w / 3), c);
+}
+
+function iconNext(gr, cx, cy, size, c) {
+    var h = size * 0.40, w = size * 0.34;
+    gr.SetSmoothingMode(2);
+    gr.FillPolygon(c, 0, [cx - w * 1.05, cy - h, cx + w * 0.05, cy, cx - w * 1.05, cy + h]);
+    gr.FillPolygon(c, 0, [cx + w * 0.05, cy - h, cx + w * 1.15, cy, cx + w * 0.05, cy + h]);
+}
+
+function iconPrev(gr, cx, cy, size, c) {
+    var h = size * 0.40, w = size * 0.34;
+    gr.SetSmoothingMode(2);
+    gr.FillPolygon(c, 0, [cx + w * 1.05, cy - h, cx - w * 0.05, cy, cx + w * 1.05, cy + h]);
+    gr.FillPolygon(c, 0, [cx - w * 0.05, cy - h, cx - w * 1.15, cy, cx - w * 0.05, cy + h]);
+}
+
+function arrowHead(gr, x, y, dir, s, c) {
+    // dir: 1 = pointing right, -1 = pointing left
+    gr.FillPolygon(c, 0, [x, y - s, x + s * 1.1 * dir, y, x, y + s]);
+}
+
+function iconShuffle(gr, cx, cy, size, c) {
+    var w = size * 0.44, h = size * 0.30, lw = Math.max(1, size * 0.085);
+    gr.SetSmoothingMode(2);
+    gr.DrawLine(cx - w, cy - h, cx + w * 0.45, cy + h, lw, c);
+    gr.DrawLine(cx - w, cy + h, cx - w * 0.25, cy + h * 0.35, lw, c);
+    gr.DrawLine(cx + w * 0.1, cy - h * 0.5, cx + w * 0.45, cy - h, lw, c);
+    arrowHead(gr, cx + w * 0.42, cy - h, 1, size * 0.17, c);
+    arrowHead(gr, cx + w * 0.42, cy + h, 1, size * 0.17, c);
+}
+
+function iconRepeat(gr, cx, cy, size, c, bg, one) {
+    var w = size * 0.86, h = size * 0.62, lw = Math.max(1, size * 0.085);
+    gr.SetSmoothingMode(2);
+    drawRound(gr, cx - w / 2, cy - h / 2, w, h, Math.max(2, h / 2.2), lw, c);
+    // punch a gap in the top edge, then place the arrow head there
+    gr.FillSolidRect(cx + w * 0.02, cy - h / 2 - lw, w * 0.28, lw * 2.2, bg);
+    arrowHead(gr, cx + w * 0.10, cy - h / 2, 1, size * 0.16, c);
+    if (one) drawText(gr, '1', fonts.tiny, c, cx - size * 0.4, cy - size * 0.4, size * 0.8, size * 0.8,
+        DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+}
+
+function iconSpeaker(gr, cx, cy, size, c, bg, waves) {
+    var b = size * 0.5;
+    gr.SetSmoothingMode(2);
+    if (waves > 0) {
+        var lw = Math.max(1, size * 0.07);
+        for (var i = 0; i < waves; i++) {
+            var r = b * (0.5 + i * 0.42);
+            gr.DrawEllipse(cx - b * 0.05 - r, cy - r, r * 2, r * 2, lw, c);
+        }
+        // keep only the right half of each ring, then draw the cone over the seam
+        gr.FillSolidRect(cx - size, cy - size, size + b * 0.05, size * 2, bg);
+    }
+    gr.FillSolidRect(cx - b * 0.85, cy - b * 0.28, b * 0.35, b * 0.56, c);
+    gr.FillPolygon(c, 0, [cx - b * 0.5, cy - b * 0.28, cx - b * 0.02, cy - b * 0.72,
+                          cx - b * 0.02, cy + b * 0.72, cx - b * 0.5, cy + b * 0.28]);
+}
+
+function iconEq(gr, x, y, w, h, c, phase, animated) {
+    // little animated equalizer used as the "now playing" marker
+    var bars = 3, bw = w / (bars * 2 - 1);
+    for (var i = 0; i < bars; i++) {
+        var f = animated
+            ? 0.35 + 0.65 * Math.abs(Math.sin(phase * 0.11 + i * 1.1))
+            : (i === 1 ? 0.9 : 0.5);
+        var bh = Math.max(2, h * f);
+        fillRound(gr, x + i * bw * 2, y + h - bh, bw, bh, Math.max(1, bw / 2), c);
+    }
+}
+
+// ------------------------------------------------------------ ART CACHE -----
+
+var artCache = {
+    raw: null,          // GdiBitmap of the current track, unprocessed
+    key: '',
+    sized: {},          // "size_radius" -> rounded bitmap
+    thumbs: {},         // album key -> rounded thumbnail
+    order: [],
+    max: 96,
+
+    reset: function () {
+        this.sized = {};
+        this.thumbs = {};
+        this.order = [];
+    },
+
+    setNowPlaying: function (handle) {
+        this.raw = getArt(handle);
+        this.sized = {};
+    },
+
+    now: function (size, radius) {
+        if (!this.raw || size < 4) return null;
+        var k = size + '_' + radius;
+        if (!this.sized[k]) this.sized[k] = squareArt(this.raw, size, radius);
+        return this.sized[k];
+    },
+
+    thumb: function (key, handle, size, radius) {
+        var k = key + '@' + size;
+        if (this.thumbs.hasOwnProperty(k)) return this.thumbs[k];
+        var img = getArt(handle);
+        var out = img ? squareArt(img, size, radius) : null;
+        this.thumbs[k] = out;
+        this.order.push(k);
+        while (this.order.length > this.max) delete this.thumbs[this.order.shift()];
+        return out;
+    }
+};
+
+var tf = {
+    title:  fb.TitleFormat('[%title%]'),
+    artist: fb.TitleFormat('[%artist%]'),
+    album:  fb.TitleFormat('[%album%]'),
+    length: fb.TitleFormat('%length%'),
+    key:    fb.TitleFormat('[%album artist%] // [%album%] // $directory_path(%path%)')
+};
+
+function evalTf(fmt, handle) {
+    try { return handle ? fmt.EvalWithMetadb(handle) : ''; } catch (e) { return ''; }
+}
+
+// -------------------------------------------------------- TRANSPORT STATE ---
+
+function isShuffle() {
+    try { return fb.PlaybackOrder >= 3; } catch (e) { return false; }
+}
+
+function repeatMode() {                       // 0 none, 1 all, 2 one
+    try {
+        var o = fb.PlaybackOrder;
+        return o === 1 ? 1 : (o === 2 ? 2 : 0);
+    } catch (e) { return 0; }
+}
+
+function toggleShuffle() {
+    try { fb.PlaybackOrder = isShuffle() ? 0 : 4; } catch (e) {}
+}
+
+function cycleRepeat() {
+    try {
+        var r = repeatMode();
+        fb.PlaybackOrder = r === 0 ? 1 : (r === 1 ? 2 : 0);
+    } catch (e) {}
+}
+
+function volumeToPos() {                      // dB -> 0..1
+    try {
+        var v = fb.Volume;
+        if (v <= -100) return 0;
+        return clamp(Math.pow(10, v / 50), 0, 1);
+    } catch (e) { return 1; }
+}
+
+function posToVolume(p) {
+    p = clamp(p, 0, 1);
+    try { fb.Volume = p <= 0.0001 ? -100 : clamp(50 * Math.log(p) / Math.LN10, -100, 0); } catch (e) {}
+}
+
+// --------------------------------------------------------------- BUTTONS ----
+
+function Button(id, draw, action) {
+    this.id = id;
+    this.draw = draw;
+    this.action = action;
+    this.x = this.y = this.w = this.h = 0;
+}
+
+Button.prototype.place = function (x, y, w, h) {
+    this.x = Math.round(x); this.y = Math.round(y);
+    this.w = Math.round(w); this.h = Math.round(h);
+    return this;
+};
+
+Button.prototype.hit = function (x, y) {
+    return x >= this.x && x < this.x + this.w && y >= this.y && y < this.y + this.h;
+};
+
+// ---------------------------------------------------------------- PLAYER ----
+
+function Player(bar) {
+    this.bar = bar;                 // true = compact transport bar
+    this.hover = '';
+    this.dragSeek = false;
+    this.dragVol = false;
+    this.seekPos = 0;
+    this.rcSeek = { x: 0, y: 0, w: 0, h: 0 };
+    this.rcVol = { x: 0, y: 0, w: 0, h: 0 };
+    this.rcArt = { x: 0, y: 0, w: 0, h: 0 };
+    this.showVol = true;
+    this.showOrder = true;
+    this.buttons = [];
+    this.phase = 0;
+    this.build();
+    this.metadb = fb.GetNowPlaying();
+    artCache.setNowPlaying(this.metadb);
+}
+
+Player.prototype.build = function () {
+    var self = this;
+    this.buttons = [
+        new Button('shuffle',
+            function (gr, b) {
+                var on = isShuffle();
+                iconShuffle(gr, b.x + b.w / 2, b.y + b.h / 2, b.h * 0.62,
+                    on ? ACCENT : self.iconColour('shuffle'));
+            },
+            function () { toggleShuffle(); }),
+        new Button('prev',
+            function (gr, b) { iconPrev(gr, b.x + b.w / 2, b.y + b.h / 2, b.h * 0.68, self.iconColour('prev')); },
+            function () { fb.Prev(); }),
+        new Button('play',
+            function (gr, b) {
+                var c = self.iconColour('play'), cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+                if (fb.IsPlaying && !fb.IsPaused) iconPause(gr, cx, cy, b.h * 0.78, c);
+                else iconPlay(gr, cx + b.h * 0.03, cy, b.h * 0.82, c);
+            },
+            function () { fb.PlayOrPause(); }),
+        new Button('next',
+            function (gr, b) { iconNext(gr, b.x + b.w / 2, b.y + b.h / 2, b.h * 0.68, self.iconColour('next')); },
+            function () { fb.Next(); }),
+        new Button('repeat',
+            function (gr, b) {
+                var r = repeatMode();
+                iconRepeat(gr, b.x + b.w / 2, b.y + b.h / 2, b.h * 0.60,
+                    r ? ACCENT : self.iconColour('repeat'), colours.bg, r === 2);
+            },
+            function () { cycleRepeat(); })
+    ];
+};
+
+Player.prototype.iconColour = function (id) {
+    return this.hover === id ? blend(colours.icon, colours.text, 0.9) : colours.icon;
+};
+
+Player.prototype.find = function (id) {
+    for (var i = 0; i < this.buttons.length; i++) if (this.buttons[i].id === id) return this.buttons[i];
+    return null;
+};
+
+Player.prototype.layout = function (W, H) {
+    this.W = W; this.H = H;
+    return this.bar ? this.layoutBar(W, H) : this.layoutFull(W, H);
+};
+
+Player.prototype.layoutFull = function (W, H) {
+    var pad = px(22);
+    var big = px(52), small = px(34), gap = px(14);
+    var blockH = px(20 + 26 + 20 + 12 + 30 + 16 + 12) + big + pad;
+
+    this.showOrder = W > px(230);
+
+    var art = Math.min(W - pad * 2, H - blockH - pad * 2);
+    art = art < px(70) ? 0 : Math.min(art, px(420));
+    this.artSize = art;
+
+    var top = art ? Math.max(pad, (H - blockH - art) / 2) : pad;
+    this.rcArt = { x: (W - art) / 2, y: top, w: art, h: art };
+
+    var y = top + art + (art ? px(20) : px(4));
+    this.titleY = y; y += px(26);
+    this.artistY = y; y += px(20) + px(12);
+    this.rcSeek = { x: pad, y: y, w: W - pad * 2, h: px(4) };
+    this.timesY = y + px(8);
+    y += px(30);
+
+    // transport row, centred
+    var order = this.showOrder ? 1 : 0;
+    var rowW = big + (small + gap) * 2 + (order ? (small + gap) * 2 : 0);
+    var x = (W - rowW) / 2;
+    if (order) { this.find('shuffle').place(x, y + (big - small) / 2, small, small); x += small + gap; }
+    this.find('prev').place(x, y + (big - small) / 2, small, small); x += small + gap;
+    this.find('play').place(x, y, big, big); x += big + gap;
+    this.find('next').place(x, y + (big - small) / 2, small, small); x += small + gap;
+    if (order) this.find('repeat').place(x, y + (big - small) / 2, small, small);
+    y += big + px(16);
+
+    var vw = Math.min(px(180), W - pad * 2 - px(56));
+    this.showVol = vw > px(50) && y + px(12) < H;
+    this.rcVol = this.showVol
+        ? { x: (W - vw) / 2 + px(14), y: y, w: vw, h: px(4) }
+        : { x: 0, y: 0, w: 0, h: 0 };
+};
+
+Player.prototype.layoutBar = function (W, H) {
+    var pad = px(8);
+    var size = clamp(H - pad * 2, px(24), px(40));
+    var big = Math.min(size * 1.15, H - pad * 2);
+    var gap = px(6);
+
+    this.showVol = W > px(560);
+    this.showOrder = W > px(420);
+    this.artSize = 0;
+
+    var cy = H / 2;
+    var x = pad;
+    this.find('prev').place(x, cy - size / 2, size, size); x += size + gap;
+    this.find('play').place(x, cy - big / 2, big, big); x += big + gap;
+    this.find('next').place(x, cy - size / 2, size, size); x += size + gap;
+
+    if (this.showVol) {
+        x += px(12);
+        var vw = px(76);
+        this.rcVol = { x: x + px(18), y: cy - px(2), w: vw, h: px(4) };
+        x += px(18) + vw;
+    } else {
+        this.rcVol = { x: 0, y: 0, w: 0, h: 0 };
+    }
+    var leftEnd = x;
+
+    var rightStart = W - pad;
+    if (this.showOrder) {
+        this.find('repeat').place(W - pad - size, cy - size / 2, size, size);
+        this.find('shuffle').place(W - pad - size * 2 - gap, cy - size / 2, size, size);
+        rightStart = W - pad - size * 2 - gap;
+    }
+
+    var avail = rightStart - leftEnd - px(28);
+    var cw = clamp(avail, px(150), px(520));
+    var cx = leftEnd + px(14) + Math.max(0, (avail - cw) / 2);
+    var ch = H - pad * 2;
+    this.card = { x: cx, y: pad, w: cw, h: ch, visible: avail > px(140) };
+
+    var ar = Math.max(0, ch - px(10));
+    this.rcArt = { x: cx + px(5), y: pad + px(5), w: ar, h: ar };
+
+    var tx = cx + px(5) + ar + px(10);
+    var tw = Math.max(px(40), cx + cw - px(10) - tx);
+    this.cardText = { x: tx, w: tw };
+    this.cardTitleY = pad + Math.max(px(3), (ch - px(12) - px(32)) / 2);
+    this.cardArtistY = this.cardTitleY + px(17);
+    this.rcSeek = { x: tx + px(34), y: pad + ch - px(10), w: Math.max(0, tw - px(70)), h: px(3) };
+};
+
+Player.prototype.seekRatio = function () {
+    if (this.dragSeek) return this.seekPos;
+    var len = 0, t = 0;
+    try { len = fb.PlaybackLength; t = fb.PlaybackTime; } catch (e) {}
+    return len > 0 ? clamp(t / len, 0, 1) : 0;
+};
+
+Player.prototype.drawSlider = function (gr, rc, ratio, hovered, colour) {
+    if (rc.w <= 0) return;
+    var r = rc.h / 2;
+    fillRound(gr, rc.x, rc.y, rc.w, rc.h, r, colours.track);
+    var w = Math.round(rc.w * clamp(ratio, 0, 1));
+    if (w > 1) fillRound(gr, rc.x, rc.y, w, rc.h, r, colour);
+    if (hovered) {
+        var d = rc.h * 3.2;
+        gr.SetSmoothingMode(2);
+        gr.FillEllipse(rc.x + w - d / 2, rc.y + rc.h / 2 - d / 2, d, d, colours.text);
+    }
+};
+
+Player.prototype.paint = function (gr) {
+    gr.FillSolidRect(0, 0, this.W, this.H, colours.bg);
+    gr.SetSmoothingMode(2);
+    this.bar ? this.paintBar(gr) : this.paintFull(gr);
+};
+
+Player.prototype.paintFull = function (gr) {
+    var W = this.W, playing = !!this.metadb;
+    var title = playing ? evalTf(tf.title, this.metadb) : '재생 중인 항목 없음';
+    var artist = playing ? evalTf(tf.artist, this.metadb) : '';
+    var album = playing ? evalTf(tf.album, this.metadb) : '';
+    var pad = px(22);
+
+    if (this.artSize > 0) {
+        var rc = this.rcArt, rad = px(10);
+        // soft drop shadow
+        for (var i = 6; i > 0; i--) {
+            fillRound(gr, rc.x - i, rc.y - i * 0.4 + px(4), rc.w + i * 2, rc.h + i * 2,
+                rad + i, alpha(colours.shadow, props.theme === 'light' ? 6 : 10));
+        }
+        var img = artCache.now(Math.round(rc.w), rad);
+        if (img) gr.DrawImage(img, rc.x, rc.y, rc.w, rc.h, 0, 0, img.Width, img.Height);
+        else {
+            fillRound(gr, rc.x, rc.y, rc.w, rc.h, rad, colours.card);
+            iconEq(gr, rc.x + rc.w / 2 - px(11), rc.y + rc.h / 2 - px(9), px(22), px(18), colours.sub, 0, false);
+        }
+    }
+
+    drawText(gr, title, fonts.huge, colours.text, pad, this.titleY, W - pad * 2, px(26),
+        DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS);
+    var sub = artist + (album && artist ? ' — ' + album : album);
+    drawText(gr, sub, fonts.body, this.hover === 'art' ? ACCENT : colours.sub,
+        pad, this.artistY, W - pad * 2, px(20),
+        DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS);
+
+    var ratio = this.seekRatio(), len = 0;
+    try { len = fb.PlaybackLength; } catch (e) {}
+    this.drawSlider(gr, this.rcSeek, ratio, this.hover === 'seek' || this.dragSeek, ACCENT);
+    if (len > 0) {
+        drawText(gr, fmtTime(ratio * len), fonts.small, colours.sub, this.rcSeek.x, this.timesY, px(60), px(16),
+            DT_LEFT | DT_SINGLELINE | DT_NOPREFIX);
+        drawText(gr, '-' + fmtTime(len - ratio * len), fonts.small, colours.sub,
+            this.rcSeek.x + this.rcSeek.w - px(60), this.timesY, px(60), px(16),
+            DT_RIGHT | DT_SINGLELINE | DT_NOPREFIX);
+    }
+
+    for (var b = 0; b < this.buttons.length; b++) {
+        var btn = this.buttons[b];
+        if (!this.showOrder && (btn.id === 'shuffle' || btn.id === 'repeat')) continue;
+        btn.draw(gr, btn);
+    }
+
+    if (this.rcVol.w > 0) {
+        var v = volumeToPos();
+        iconSpeaker(gr, this.rcVol.x - px(14), this.rcVol.y + px(2), px(15), colours.sub, colours.bg,
+            v > 0.66 ? 2 : (v > 0.05 ? 1 : 0));
+        this.drawSlider(gr, this.rcVol, v, this.hover === 'vol' || this.dragVol, colours.icon);
+    }
+};
+
+Player.prototype.paintBar = function (gr) {
+    var playing = !!this.metadb;
+
+    for (var b = 0; b < this.buttons.length; b++) {
+        var btn = this.buttons[b];
+        if (!this.showOrder && (btn.id === 'shuffle' || btn.id === 'repeat')) continue;
+        btn.draw(gr, btn);
+    }
+
+    if (this.rcVol.w > 0) {
+        var v = volumeToPos();
+        iconSpeaker(gr, this.rcVol.x - px(12), this.rcVol.y + px(2), px(14), colours.sub, colours.bg,
+            v > 0.66 ? 2 : (v > 0.05 ? 1 : 0));
+        this.drawSlider(gr, this.rcVol, v, this.hover === 'vol' || this.dragVol, colours.icon);
+    }
+
+    if (!this.card || !this.card.visible) return;
+    var c = this.card;
+    fillRound(gr, c.x, c.y, c.w, c.h, px(6), colours.card);
+
+    var rc = this.rcArt;
+    if (rc.w > 4) {
+        var img = artCache.now(Math.round(rc.w), px(4));
+        if (img) gr.DrawImage(img, rc.x, rc.y, rc.w, rc.h, 0, 0, img.Width, img.Height);
+        else {
+            fillRound(gr, rc.x, rc.y, rc.w, rc.h, px(4), colours.hover);
+            iconEq(gr, rc.x + rc.w / 2 - px(7), rc.y + rc.h / 2 - px(6), px(14), px(12), colours.sub, 0, false);
+        }
+    }
+
+    var tx = this.cardText.x, tw = this.cardText.w;
+    var title = playing ? evalTf(tf.title, this.metadb) : '재생 중인 항목 없음';
+    var artist = playing ? evalTf(tf.artist, this.metadb) : '';
+    var album = playing ? evalTf(tf.album, this.metadb) : '';
+    var sub = artist + (album && artist ? ' — ' + album : album);
+    var flags = DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS;
+    drawText(gr, title, fonts.title, colours.text, tx, this.cardTitleY, tw, px(17), flags);
+    drawText(gr, sub, fonts.small, colours.sub, tx, this.cardArtistY, tw, px(15), flags);
+
+    var ratio = this.seekRatio(), len = 0;
+    try { len = fb.PlaybackLength; } catch (e) {}
+    this.drawSlider(gr, this.rcSeek, ratio, this.hover === 'seek' || this.dragSeek, ACCENT);
+    if (len > 0) {
+        drawText(gr, fmtTime(ratio * len), fonts.tiny, colours.sub,
+            this.rcSeek.x - px(33), this.rcSeek.y - px(6), px(30), px(14),
+            DT_RIGHT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+        drawText(gr, '-' + fmtTime(len - ratio * len), fonts.tiny, colours.sub,
+            this.rcSeek.x + this.rcSeek.w + px(4), this.rcSeek.y - px(6), px(32), px(14),
+            DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+    }
+};
+
+function inRect(rc, x, y, grow) {
+    grow = grow || 0;
+    return x >= rc.x - grow && x < rc.x + rc.w + grow &&
+           y >= rc.y - grow && y < rc.y + rc.h + grow;
+}
+
+Player.prototype.hitTest = function (x, y) {
+    if (inRect(this.rcSeek, x, y, px(7))) return 'seek';
+    if (this.rcVol.w > 0 && inRect(this.rcVol, x, y, px(7))) return 'vol';
+    for (var i = 0; i < this.buttons.length; i++) {
+        var b = this.buttons[i];
+        if (!this.showOrder && (b.id === 'shuffle' || b.id === 'repeat')) continue;
+        if (b.hit(x, y)) return b.id;
+    }
+    if (this.artSize > 0 && inRect(this.rcArt, x, y)) return 'art';
+    return '';
+};
+
+Player.prototype.move = function (x, y) {
+    if (this.dragSeek) {
+        this.seekPos = clamp((x - this.rcSeek.x) / this.rcSeek.w, 0, 1);
+        window.Repaint();
+        return;
+    }
+    if (this.dragVol) {
+        posToVolume((x - this.rcVol.x) / this.rcVol.w);
+        window.Repaint();
+        return;
+    }
+    var h = this.hitTest(x, y);
+    if (h !== this.hover) {
+        this.hover = h;
+        setCursorHand(h !== '' && h !== 'art');
+        window.Repaint();
+    }
+};
+
+Player.prototype.leave = function () {
+    if (this.hover) { this.hover = ''; window.Repaint(); }
+};
+
+Player.prototype.down = function (x, y) {
+    var h = this.hitTest(x, y);
+    if (h === 'seek') {
+        var len = 0;
+        try { len = fb.PlaybackLength; } catch (e) {}
+        if (len > 0) { this.dragSeek = true; this.seekPos = clamp((x - this.rcSeek.x) / this.rcSeek.w, 0, 1); window.Repaint(); }
+    } else if (h === 'vol') {
+        this.dragVol = true;
+        posToVolume((x - this.rcVol.x) / this.rcVol.w);
+        window.Repaint();
+    }
+};
+
+Player.prototype.up = function (x, y) {
+    if (this.dragSeek) {
+        this.dragSeek = false;
+        try {
+            var len = fb.PlaybackLength;
+            if (len > 0) fb.PlaybackTime = this.seekPos * len;
+        } catch (e) {}
+        window.Repaint();
+        return;
+    }
+    if (this.dragVol) { this.dragVol = false; window.Repaint(); return; }
+    var h = this.hitTest(x, y);
+    for (var i = 0; i < this.buttons.length; i++) {
+        if (this.buttons[i].id === h) { this.buttons[i].action(); window.Repaint(); return; }
+    }
+};
+
+Player.prototype.dblclick = function (x, y) {
+    if (this.artSize > 0 && inRect(this.rcArt, x, y)) {
+        try { fb.RunMainMenuCommand('View/Show now playing in playlist'); } catch (e) {}
+    }
+};
+
+Player.prototype.wheel = function (step) {
+    if (this.hover === 'seek') {
+        try {
+            var len = fb.PlaybackLength;
+            if (len > 0) fb.PlaybackTime = clamp(fb.PlaybackTime + step * 5, 0, len);
+        } catch (e) {}
+        return;
+    }
+    posToVolume(volumeToPos() + step * 0.04);
+    window.Repaint();
+};
+
+Player.prototype.newTrack = function (handle) {
+    this.metadb = handle;
+    artCache.setNowPlaying(handle);
+    window.Repaint();
+};
+
+Player.prototype.tick = function () {
+    this.phase++;
+    // the seek bar only needs a few frames per second
+    if (this.phase % 5 === 0 && fb.IsPlaying && !fb.IsPaused && !this.dragSeek) window.Repaint();
+};
+
+// -------------------------------------------------------------- PLAYLIST ----
+
+function Playlist() {
+    this.rowH = px(clamp(props.rowHeight, 24, 96));
+    this.scroll = 0;
+    this.target = 0;
+    this.hoverRow = -1;
+    this.dragBar = false;
+    this.dragOffset = 0;
+    this.barHover = false;
+    this.phase = 0;
+    this.cache = {};
+    this.pending = [];
+    this.items = null;
+    this.count = 0;
+    this.pl = -1;
+    this.refresh();
+}
+
+Playlist.prototype.refresh = function () {
+    try {
+        this.pl = plman.ActivePlaylist;
+        this.items = this.pl >= 0 ? plman.GetPlaylistItems(this.pl) : null;
+        this.count = this.items ? this.items.Count : 0;
+        this.name = this.pl >= 0 ? plman.GetPlaylistName(this.pl) : '';
+    } catch (e) { this.items = null; this.count = 0; this.name = ''; }
+    this.cache = {};
+    this.pending = [];
+    this.clampScroll();
+};
+
+Playlist.prototype.row = function (i) {
+    if (this.cache[i]) return this.cache[i];
+    var h = listItem(this.items, i);
+    var r = {
+        handle: h,
+        title: evalTf(tf.title, h) || '(제목 없음)',
+        artist: evalTf(tf.artist, h),
+        album: evalTf(tf.album, h),
+        length: evalTf(tf.length, h),
+        key: evalTf(tf.key, h)
+    };
+    this.cache[i] = r;
+    return r;
+};
+
+Playlist.prototype.layout = function (W, H) {
+    this.W = W; this.H = H;
+    this.pad = px(16);
+    this.headerH = H > px(240) ? px(62) : 0;
+    this.colsH = H > px(160) ? px(24) : 0;
+    this.top = this.headerH + this.colsH;
+    this.view = Math.max(0, H - this.top);
+    this.showAlbum = W > px(560);
+    this.showThumb = props.rowArt && this.rowH >= px(36) && W > px(260);
+    this.durW = px(46);
+    this.albumW = this.showAlbum ? Math.round((W - this.pad * 2) * 0.28) : 0;
+    this.clampScroll();
+};
+
+Playlist.prototype.maxScroll = function () {
+    return Math.max(0, this.count * this.rowH - (this.view || 0));
+};
+
+Playlist.prototype.clampScroll = function () {
+    var m = this.maxScroll();
+    this.target = clamp(this.target, 0, m);
+    this.scroll = clamp(this.scroll, 0, m);
+};
+
+Playlist.prototype.rowAt = function (y) {
+    if (y < this.top) return -1;
+    var i = Math.floor((y - this.top + this.scroll) / this.rowH);
+    return (i >= 0 && i < this.count) ? i : -1;
+};
+
+Playlist.prototype.paint = function (gr) {
+    var W = this.W, H = this.H;
+    gr.FillSolidRect(0, 0, W, H, colours.bg);
+    gr.SetSmoothingMode(2);
+
+    if (this.headerH) {
+        drawText(gr, this.name || '재생목록', fonts.huge, colours.text,
+            this.pad, px(10), W - this.pad * 2, px(26), DT_LINE);
+        drawText(gr, this.count + '곡', fonts.small, colours.sub,
+            this.pad, px(34), W - this.pad * 2, px(18), DT_LINE);
+    }
+    if (this.colsH) {
+        var cy = this.headerH;
+        drawText(gr, '노래', fonts.tiny, colours.sub, this.pad + (this.showThumb ? this.rowH - px(4) : px(2)),
+            cy, px(120), this.colsH, DT_LINE);
+        if (this.showAlbum) {
+            drawText(gr, '앨범', fonts.tiny, colours.sub, W - this.pad - this.durW - this.albumW,
+                cy, this.albumW, this.colsH, DT_LINE);
+        }
+        drawText(gr, '시간', fonts.tiny, colours.sub, W - this.pad - this.durW, cy, this.durW, this.colsH,
+            DT_RIGHT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+        gr.FillSolidRect(this.pad, cy + this.colsH - 1, W - this.pad * 2, 1, colours.line);
+    }
+
+    if (!this.count) {
+        drawText(gr, '재생목록이 비어 있습니다', fonts.body, colours.sub, 0, this.top, W, px(40),
+            DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+        return;
+    }
+
+    var loc = playingLocation();
+    var playingIdx = (loc && loc.pl === this.pl) ? loc.item : -1;
+    var first = Math.max(0, Math.floor(this.scroll / this.rowH));
+    var last = Math.min(this.count - 1, Math.ceil((this.scroll + this.view) / this.rowH));
+
+    for (var i = first; i <= last; i++) this.paintRow(gr, i, playingIdx);
+
+    this.paintScrollbar(gr);
+};
+
+Playlist.prototype.paintRow = function (gr, i, playingIdx) {
+    var y = this.top + i * this.rowH - this.scroll;
+    var W = this.W, rowH = this.rowH, pad = this.pad;
+    var r = this.row(i);
+    var selected = false;
+    try { selected = plman.IsPlaylistItemSelected(this.pl, i); } catch (e) {}
+    var playing = i === playingIdx;
+
+    if (selected || this.hoverRow === i) {
+        fillRound(gr, pad - px(6), y + px(2), W - (pad - px(6)) * 2, rowH - px(4), px(7),
+            selected ? colours.sel : colours.hover);
+    }
+
+    var x = pad;
+    if (this.showThumb) {
+        var ts = rowH - px(12);
+        var img = artCache.thumb(r.key, r.handle, ts, px(3));
+        if (img) gr.DrawImage(img, x, y + px(6), ts, ts, 0, 0, img.Width, img.Height);
+        else fillRound(gr, x, y + px(6), ts, ts, px(3), colours.card);
+        if (playing) {
+            fillRound(gr, x, y + px(6), ts, ts, px(3), RGBA(0, 0, 0, 140));
+            iconEq(gr, x + ts / 2 - px(6), y + rowH / 2 - px(5), px(12), px(10),
+                RGB(255, 255, 255), this.phase, fb.IsPlaying && !fb.IsPaused);
+        }
+        x += ts + px(10);
+    } else if (playing) {
+        iconEq(gr, x, y + rowH / 2 - px(5), px(10), px(10), ACCENT, this.phase, fb.IsPlaying && !fb.IsPaused);
+        x += px(18);
+    }
+
+    var right = W - pad - this.durW - px(8);
+    if (this.showAlbum) right -= this.albumW + px(8);
+    var tw = Math.max(px(40), right - x);
+
+    if (rowH >= px(36)) {
+        drawText(gr, r.title, fonts.title, playing ? ACCENT : colours.text,
+            x, y + px(5), tw, Math.floor(rowH / 2) - px(2), DT_LINE);
+        drawText(gr, r.artist, fonts.small, colours.sub,
+            x, y + Math.floor(rowH / 2), tw, Math.floor(rowH / 2) - px(5), DT_LINE);
+    } else {
+        var line = r.artist ? r.title + '  ·  ' + r.artist : r.title;
+        drawText(gr, line, fonts.body, playing ? ACCENT : colours.text, x, y, tw, rowH, DT_LINE);
+    }
+
+    if (this.showAlbum) {
+        drawText(gr, r.album, fonts.small, colours.sub,
+            W - pad - this.durW - px(8) - this.albumW, y, this.albumW, rowH, DT_LINE);
+    }
+    drawText(gr, r.length, fonts.small, colours.sub, W - pad - this.durW, y, this.durW, rowH,
+        DT_RIGHT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+};
+
+Playlist.prototype.barRect = function () {
+    var m = this.maxScroll();
+    if (m <= 0 || this.view <= 0) return null;
+    var total = this.count * this.rowH;
+    var h = Math.max(px(28), this.view * this.view / total);
+    var y = this.top + (this.view - h) * (this.scroll / m);
+    return { x: this.W - px(7), y: y, w: px(4), h: h };
+};
+
+Playlist.prototype.paintScrollbar = function (gr) {
+    var rc = this.barRect();
+    if (!rc) return;
+    var a = this.barHover || this.dragBar ? 190 : 90;
+    fillRound(gr, rc.x, rc.y, rc.w, rc.h, rc.w / 2, alpha(colours.sub, a));
+};
+
+Playlist.prototype.wheel = function (step) {
+    this.target = clamp(this.target - step * this.rowH * 3, 0, this.maxScroll());
+    window.Repaint();
+};
+
+Playlist.prototype.tick = function () {
+    this.phase++;
+    var repaint = false;
+    var d = this.target - this.scroll;
+    if (Math.abs(d) > 0.5) {
+        this.scroll += d * 0.28;
+        repaint = true;
+    } else if (this.scroll !== this.target) {
+        this.scroll = this.target;
+        repaint = true;
+    }
+    if (!repaint && this.phase % 3 === 0 && fb.IsPlaying && !fb.IsPaused) {
+        var loc = playingLocation();
+        if (loc && loc.pl === this.pl) repaint = true;      // animate the eq marker
+    }
+    if (repaint) window.Repaint();
+};
+
+Playlist.prototype.move = function (x, y, mask) {
+    if (this.dragBar) {
+        var m = this.maxScroll(), total = this.count * this.rowH;
+        var h = Math.max(px(28), this.view * this.view / total);
+        var t = clamp((y - this.dragOffset - this.top) / Math.max(1, this.view - h), 0, 1);
+        this.target = this.scroll = t * m;
+        window.Repaint();
+        return;
+    }
+    var rc = this.barRect();
+    var overBar = !!rc && x >= rc.x - px(6) && x <= rc.x + rc.w + px(4);
+    var row = overBar ? -1 : this.rowAt(y);
+    if (overBar !== this.barHover || row !== this.hoverRow) {
+        this.barHover = overBar;
+        this.hoverRow = row;
+        window.Repaint();
+    }
+};
+
+Playlist.prototype.leave = function () {
+    if (this.hoverRow !== -1 || this.barHover) {
+        this.hoverRow = -1;
+        this.barHover = false;
+        window.Repaint();
+    }
+};
+
+Playlist.prototype.down = function (x, y, mask) {
+    var rc = this.barRect();
+    if (rc && x >= rc.x - px(6) && y >= rc.y && y < rc.y + rc.h) {
+        this.dragBar = true;
+        this.dragOffset = y - rc.y;
+        return;
+    }
+    var i = this.rowAt(y);
+    if (i < 0) return;
+    var ctrl = !!(mask & 8), shift = !!(mask & 4);
+    try {
+        if (ctrl) {
+            plman.SetPlaylistSelectionSingle(this.pl, i, !plman.IsPlaylistItemSelected(this.pl, i));
+        } else if (shift) {
+            var from = plman.GetPlaylistFocusItemIndex(this.pl);
+            if (from < 0) from = i;
+            var a = Math.min(from, i), b = Math.max(from, i), idx = [];
+            for (var k = a; k <= b; k++) idx.push(k);
+            plman.ClearPlaylistSelection(this.pl);
+            plman.SetPlaylistSelection(this.pl, idx, true);
+        } else {
+            plman.ClearPlaylistSelection(this.pl);
+            plman.SetPlaylistSelectionSingle(this.pl, i, true);
+        }
+        if (!shift) plman.SetPlaylistFocusItem(this.pl, i);
+    } catch (e) {}
+    window.Repaint();
+};
+
+Playlist.prototype.up = function () {
+    if (this.dragBar) { this.dragBar = false; window.Repaint(); }
+};
+
+Playlist.prototype.dblclick = function (x, y) {
+    var i = this.rowAt(y);
+    if (i < 0) return;
+    try { plman.ExecutePlaylistDefaultAction(this.pl, i); } catch (e) {}
+};
+
+Playlist.prototype.contextMenu = function (x, y) {
+    var i = this.rowAt(y);
+    if (i < 0) return false;
+    try {
+        if (!plman.IsPlaylistItemSelected(this.pl, i)) {
+            plman.ClearPlaylistSelection(this.pl);
+            plman.SetPlaylistSelectionSingle(this.pl, i, true);
+            plman.SetPlaylistFocusItem(this.pl, i);
+        }
+        var handles = plman.GetPlaylistSelectedItems(this.pl);
+        var cmm = fb.CreateContextMenuManager();
+        var menu = window.CreatePopupMenu();
+        cmm.InitContext(handles);
+        cmm.BuildMenu(menu, 1, -1);
+        var id = menu.TrackPopupMenu(x, y);
+        if (id > 0) cmm.ExecuteByID(id - 1);
+        menu.Dispose();
+        cmm.Dispose();
+        return true;
+    } catch (e) { return false; }
+};
+
+Playlist.prototype.ensureVisible = function (i) {
+    var y = i * this.rowH;
+    if (y < this.target) this.target = y;
+    else if (y + this.rowH > this.target + this.view) this.target = y + this.rowH - this.view;
+    this.clampScroll();
+    window.Repaint();
+};
+
+Playlist.prototype.key = function (vkey) {
+    var focus = -1;
+    try { focus = plman.GetPlaylistFocusItemIndex(this.pl); } catch (e) {}
+    if (vkey === 38 || vkey === 40) {                       // up / down
+        var next = clamp(focus + (vkey === 40 ? 1 : -1), 0, this.count - 1);
+        try {
+            plman.ClearPlaylistSelection(this.pl);
+            plman.SetPlaylistSelectionSingle(this.pl, next, true);
+            plman.SetPlaylistFocusItem(this.pl, next);
+        } catch (e) {}
+        this.ensureVisible(next);
+    } else if (vkey === 13 && focus >= 0) {                 // enter
+        try { plman.ExecutePlaylistDefaultAction(this.pl, focus); } catch (e) {}
+    } else if (vkey === 33 || vkey === 34) {                // page up / down
+        this.target = clamp(this.target + (vkey === 34 ? this.view : -this.view), 0, this.maxScroll());
+        window.Repaint();
+    }
+};
+
+// ------------------------------------------------------------- THE PANEL ----
+
+var panel = null, panelKind = '', timerId = null;
+
+function resolveMode(W, H) {
+    var m = ('' + props.mode).toLowerCase();
+    if (m === 'player' || m === 'bar' || m === 'list') return m;
+    return (H <= px(150) && W > px(340)) ? 'bar' : 'player';
+}
+
+function buildPanel(W, H) {
+    var kind = resolveMode(W, H);
+    if (kind !== panelKind || !panel) {
+        panelKind = kind;
+        panel = kind === 'list' ? new Playlist() : new Player(kind === 'bar');
+    }
+    panel.layout(W, H);
+}
+
+function setMode(mode) {
+    props.mode = mode;
+    setProp('Apple Music.Mode (auto|player|bar|list)', mode);
+    panelKind = '';
+    buildPanel(window.Width, window.Height);
+    window.Repaint();
+}
+
+function showPanelMenu(x, y) {
+    try {
+        var menu = window.CreatePopupMenu();
+        var theme = window.CreatePopupMenu();
+        var mode = window.CreatePopupMenu();
+
+        theme.AppendMenuItem(0, 1, '다크');
+        theme.AppendMenuItem(0, 2, '라이트');
+        theme.CheckMenuRadioItem(1, 2, props.theme === 'light' ? 2 : 1);
+        theme.AppendTo(menu, 0, '테마');
+
+        var modes = ['auto', 'player', 'bar', 'list'];
+        var labels = ['자동', '플레이어 (세로)', '바 (가로)', '재생목록'];
+        for (var i = 0; i < modes.length; i++) mode.AppendMenuItem(0, 10 + i, labels[i]);
+        var cur = 0;
+        for (var m = 0; m < modes.length; m++) if (modes[m] === props.mode) cur = m;
+        mode.CheckMenuRadioItem(10, 13, 10 + cur);
+        mode.AppendTo(menu, 0, '패널 모드');
+
+        menu.AppendMenuSeparator();
+        menu.AppendMenuItem(0, 20, '패널 속성…');
+        menu.AppendMenuItem(0, 21, '스크립트 편집…');
+
+        var id = menu.TrackPopupMenu(x, y);
+        switch (id) {
+            case 1: applyTheme('dark'); break;
+            case 2: applyTheme('light'); break;
+            case 10: case 11: case 12: case 13: setMode(modes[id - 10]); break;
+            case 20: try { window.ShowProperties(); } catch (e) {} break;
+            case 21: try { window.ShowConfigure(); } catch (e) {} break;
+        }
+        menu.Dispose(); theme.Dispose(); mode.Dispose();
+        return true;
+    } catch (e) { return false; }
+}
+
+// ------------------------------------------------------------- CALLBACKS ----
+
+var reportedError = '';
+
+function on_paint(gr) {
+    if (!panel) buildPanel(window.Width, window.Height);
+    try { panel.paint(gr); }
+    catch (e) {
+        if (('' + e) !== reportedError) {          // log once, not on every frame
+            reportedError = '' + e;
+            try { console.log('Apple Music panel: ' + e); } catch (ignore) {}
+        }
+        gr.FillSolidRect(0, 0, window.Width, window.Height, colours.bg);
+        drawText(gr, 'Apple Music panel error: ' + e, fonts.small, colours.text,
+            px(10), px(10), window.Width - px(20), window.Height - px(20),
+            DT_WORDBREAK | DT_NOPREFIX);
+    }
+}
+
+function on_size() {
+    if (window.Width <= 0 || window.Height <= 0) return;
+    buildPanel(window.Width, window.Height);
+}
+
+function on_mouse_move(x, y, mask) { if (panel && panel.move) panel.move(x, y, mask); }
+function on_mouse_leave() { if (panel && panel.leave) panel.leave(); }
+function on_mouse_lbtn_down(x, y, mask) { if (panel && panel.down) panel.down(x, y, mask); }
+function on_mouse_lbtn_up(x, y, mask) { if (panel && panel.up) panel.up(x, y, mask); }
+function on_mouse_lbtn_dblclk(x, y, mask) { if (panel && panel.dblclick) panel.dblclick(x, y, mask); }
+function on_mouse_wheel(step) { if (panel && panel.wheel) panel.wheel(step); }
+
+function on_mouse_rbtn_up(x, y, mask) {
+    if (panel && panel.contextMenu && panel.contextMenu(x, y)) return true;
+    return showPanelMenu(x, y);
+}
+
+function on_key_down(vkey) { if (panel && panel.key) panel.key(vkey); }
+
+function on_playback_new_track(handle) {
+    if (panel && panel.newTrack) panel.newTrack(handle);
+    window.Repaint();
+}
+
+function on_playback_stop(reason) {
+    if (reason !== 2 && panel && panel.newTrack) panel.newTrack(null);
+    window.Repaint();
+}
+
+function on_playback_pause() { window.Repaint(); }
+function on_playback_seek() { window.Repaint(); }
+function on_playback_time() { window.Repaint(); }
+function on_playback_order_changed() { window.Repaint(); }
+function on_playback_dynamic_info_track() {
+    if (panel && panel.newTrack) panel.newTrack(fb.GetNowPlaying());
+}
+function on_volume_change() { window.Repaint(); }
+
+function on_playlist_switch() { if (panel && panel.refresh) panel.refresh(); window.Repaint(); }
+function on_playlists_changed() { if (panel && panel.refresh) panel.refresh(); window.Repaint(); }
+function on_playlist_items_added() { if (panel && panel.refresh) panel.refresh(); window.Repaint(); }
+function on_playlist_items_removed() { if (panel && panel.refresh) panel.refresh(); window.Repaint(); }
+function on_playlist_items_reordered() { if (panel && panel.refresh) panel.refresh(); window.Repaint(); }
+function on_playlist_items_selection_change() { window.Repaint(); }
+function on_item_focus_change() { window.Repaint(); }
+function on_metadb_changed() { if (panel && panel.refresh) panel.refresh(); window.Repaint(); }
+
+function on_script_unload() { stopTimer(timerId); }
+
+// ------------------------------------------------------------------ INIT ----
+
+try { window.DlgCode(0x0004); } catch (e) {}          // DLGC_WANTALLKEYS
+
+buildPanel(window.Width || 400, window.Height || 400);
+timerId = startTimer(function () {
+    if (panel && panel.tick) panel.tick();
+}, 40);
+
+return {
+  on_paint: on_paint, on_size: on_size,
+  on_mouse_move: on_mouse_move, on_mouse_leave: on_mouse_leave,
+  on_mouse_lbtn_down: on_mouse_lbtn_down, on_mouse_lbtn_up: on_mouse_lbtn_up,
+  on_mouse_lbtn_dblclk: on_mouse_lbtn_dblclk, on_mouse_rbtn_up: on_mouse_rbtn_up,
+  on_mouse_wheel: on_mouse_wheel, on_key_down: on_key_down,
+  on_playback_new_track: on_playback_new_track, on_playback_stop: on_playback_stop,
+  on_playback_pause: on_playback_pause, on_playback_time: on_playback_time,
+  on_playback_seek: on_playback_seek, on_volume_change: on_volume_change,
+  on_playlist_switch: on_playlist_switch,
+  on_playlist_items_selection_change: on_playlist_items_selection_change,
+  applyTheme: applyTheme,
+  getPanel: function () { return panel; }
+};
+}
+</script>
+
+<script>
+/* ============================================================
+   A mock foobar2000 host: GDI+ calls onto Canvas 2D, a fake
+   playback engine, and a small sample library.
+   ============================================================ */
+(function () {
+  var DPR = Math.min(window.devicePixelRatio || 1, 2);
+  var STACK = '"Segoe UI Variable Display", -apple-system, "Segoe UI", system-ui, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif';
+
+  function argb(c) {
+    c = c >>> 0;
+    var a = (c >>> 24) & 255, r = (c >>> 16) & 255, g = (c >>> 8) & 255, b = c & 255;
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + (a / 255) + ')';
+  }
+
+  function roundPath(ctx, x, y, w, h, r) {
+    r = Math.max(0, Math.min(r, w / 2, h / 2));
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  // ---- GdiGraphics -> Canvas 2D ----------------------------------------
+  function Gfx(ctx) { this.c = ctx; }
+  Gfx.prototype.SetSmoothingMode = function () {};
+  Gfx.prototype.SetInterpolationMode = function () {};
+  Gfx.prototype.SetTextRenderingHint = function () {};
+  Gfx.prototype.FillSolidRect = function (x, y, w, h, c) {
+    this.c.fillStyle = argb(c); this.c.fillRect(x, y, w, h);
+  };
+  Gfx.prototype.FillRoundRect = function (x, y, w, h, aw, ah, c) {
+    roundPath(this.c, x, y, w, h, aw); this.c.fillStyle = argb(c); this.c.fill();
+  };
+  Gfx.prototype.DrawRoundRect = function (x, y, w, h, aw, ah, lw, c) {
+    roundPath(this.c, x, y, w, h, aw);
+    this.c.strokeStyle = argb(c); this.c.lineWidth = lw; this.c.stroke();
+  };
+  Gfx.prototype.FillPolygon = function (c, mode, pts) {
+    var g = this.c;
+    g.beginPath(); g.moveTo(pts[0], pts[1]);
+    for (var i = 2; i < pts.length; i += 2) g.lineTo(pts[i], pts[i + 1]);
+    g.closePath(); g.fillStyle = argb(c); g.fill();
+  };
+  Gfx.prototype.DrawLine = function (x1, y1, x2, y2, lw, c) {
+    var g = this.c;
+    g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2);
+    g.strokeStyle = argb(c); g.lineWidth = lw; g.lineCap = 'round'; g.stroke();
+    g.lineCap = 'butt';
+  };
+  Gfx.prototype.DrawEllipse = function (x, y, w, h, lw, c) {
+    var g = this.c;
+    g.beginPath(); g.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
+    g.strokeStyle = argb(c); g.lineWidth = lw; g.stroke();
+  };
+  Gfx.prototype.FillEllipse = function (x, y, w, h, c) {
+    var g = this.c;
+    g.beginPath(); g.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
+    g.fillStyle = argb(c); g.fill();
+  };
+  Gfx.prototype.DrawImage = function (img, dx, dy, dw, dh, sx, sy, sw, sh) {
+    var s = img.scale;
+    try {
+      this.c.drawImage(img.canvas, sx * s, sy * s, sw * s, sh * s, dx, dy, dw, dh);
+    } catch (e) {}
+  };
+  Gfx.prototype.CalcTextWidth = function (t, font) {
+    this.c.font = font.css;
+    return this.c.measureText('' + t).width;
+  };
+  Gfx.prototype.GdiDrawText = function (text, font, colour, x, y, w, h, flags) {
+    var g = this.c;
+    g.save();
+    g.beginPath(); g.rect(x, y, w, h); g.clip();
+    g.font = font.css; g.fillStyle = argb(colour);
+    var t = '' + text;
+    if (flags & 0x8000) {                                  // DT_END_ELLIPSIS
+      if (g.measureText(t).width > w) {
+        while (t.length > 1 && g.measureText(t + '…').width > w) t = t.slice(0, -1);
+        t += '…';
+      }
+    }
+    var align = (flags & 2) ? 'right' : (flags & 1) ? 'center' : 'left';
+    g.textAlign = align;
+    g.textBaseline = (flags & 4) ? 'middle' : 'top';
+    var tx = align === 'right' ? x + w : align === 'center' ? x + w / 2 : x;
+    var ty = (flags & 4) ? y + h / 2 : y;
+    if (flags & 0x10) {                                    // DT_WORDBREAK
+      var words = t.split(' '), line = '', lh = font.size * 1.5, cy = y;
+      for (var i = 0; i < words.length; i++) {
+        var test = line ? line + ' ' + words[i] : words[i];
+        if (g.measureText(test).width > w && line) { g.fillText(line, tx, cy); line = words[i]; cy += lh; }
+        else line = test;
+      }
+      g.fillText(line, tx, cy);
+    } else {
+      g.fillText(t, tx, ty);
+    }
+    g.restore();
+  };
+  Gfx.prototype.DrawString = Gfx.prototype.GdiDrawText;
+
+  // ---- GdiBitmap -------------------------------------------------------
+  function wrapImage(canvas, scale) {
+    return {
+      canvas: canvas, scale: scale,
+      Width: Math.round(canvas.width / scale),
+      Height: Math.round(canvas.height / scale),
+      GetGraphics: function () { return new Gfx(canvas.getContext('2d')); },
+      ReleaseGraphics: function () {},
+      Resize: function (w, h) {
+        var c = document.createElement('canvas');
+        c.width = Math.max(1, w); c.height = Math.max(1, h);
+        c.getContext('2d').drawImage(canvas, 0, 0, c.width, c.height);
+        return wrapImage(c, 1);
+      },
+      ApplyMask: function (mask) {
+        var ctx = canvas.getContext('2d');
+        var src = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        var mc = mask.canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+        for (var i = 0; i < src.data.length; i += 4) src.data[i + 3] = 255 - mc.data[i];
+        ctx.putImageData(src, 0, 0);
+      }
+    };
+  }
+
+  var gdi = {
+    Font: function (name, size, style) {
+      return { name: name, size: size, style: style,
+               css: (style & 1 ? '700 ' : '400 ') + Math.round(size * 1.333) + 'px ' + STACK };
+    },
+    CreateImage: function (w, h) {
+      var c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(w * DPR));
+      c.height = Math.max(1, Math.round(h * DPR));
+      var ctx = c.getContext('2d');
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      return wrapImage(c, DPR);
+    }
+  };
+
+  // ---- sample library --------------------------------------------------
+  var TRACKS = [
+    ['한숨', '이하이', 'SEOULITE', 250, '#3b2d5e', '#c2445c'],
+    ['밤편지', '아이유', 'Palette', 254, '#1f3b4d', '#7fb2c4'],
+    ['Everything', '검정치마', 'TEAM BABY', 226, '#7a2f2f', '#e0a05a'],
+    ['난춘', '새소년', '비적립성 만족', 285, '#123832', '#6fbf8f'],
+    ['주저하는 연인들을 위해', '잔나비', '전설', 312, '#2a2a35', '#b9a06a'],
+    ['Square', '백예린', 'Every Letter I Sent You', 273, '#2b2f57', '#8f7fd4'],
+    ['Weird Fishes / Arpeggi', 'Radiohead', 'In Rainbows', 318, '#4a1d1d', '#d9b23a'],
+    ['Instant Crush', 'Daft Punk', 'Random Access Memories', 337, '#1a1a1a', '#c9922e'],
+    ['Let It Happen', 'Tame Impala', 'Currents', 467, '#132b4a', '#e4643a'],
+    ['Space Song', 'Beach House', 'Depression Cherry', 320, '#5a1a24', '#d46a72'],
+    ['Pink + White', 'Frank Ocean', 'Blonde', 184, '#2f3b2a', '#cfd36a'],
+    ['Show Me How', 'Men I Trust', 'Oncle Jazz', 200, '#1c2d3d', '#7ea6b8'],
+    ['Dreams', 'Fleetwood Mac', 'Rumours', 257, '#3d2b1f', '#c98f52'],
+    ['Ditto', 'NewJeans', 'NewJeans OMG', 185, '#2b3a4a', '#9fc7dd']
+  ];
+
+  function makeCover(title, c1, c2) {
+    var n = 500, c = document.createElement('canvas');
+    c.width = c.height = n;
+    var g = c.getContext('2d');
+    var grad = g.createLinearGradient(0, 0, n, n);
+    grad.addColorStop(0, c1); grad.addColorStop(1, c2);
+    g.fillStyle = grad; g.fillRect(0, 0, n, n);
+    var glow = g.createRadialGradient(n * 0.72, n * 0.26, 10, n * 0.72, n * 0.26, n * 0.75);
+    glow.addColorStop(0, 'rgba(255,255,255,.34)');
+    glow.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = glow; g.fillRect(0, 0, n, n);
+    g.strokeStyle = 'rgba(0,0,0,.13)'; g.lineWidth = 34;
+    for (var i = 0; i < 3; i++) {
+      g.beginPath(); g.arc(n * 0.28, n * 0.82, n * (0.30 + i * 0.26), 0, Math.PI * 2); g.stroke();
+    }
+    g.fillStyle = 'rgba(255,255,255,.9)';
+    g.font = '700 ' + Math.round(n * 0.30) + 'px ' + STACK;
+    g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+    g.fillText(title.slice(0, 1), n * 0.08, n * 0.30);
+    var vig = g.createLinearGradient(0, n * 0.5, 0, n);
+    vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,.28)');
+    g.fillStyle = vig; g.fillRect(0, 0, n, n);
+    return wrapImage(c, 1);
+  }
+
+  var ITEMS = TRACKS.map(function (t, i) {
+    return { __i: i, Path: 'D:\\Music\\' + t[2] + '\\' + t[0] + '.flac',
+             title: t[0], artist: t[1], album: t[2], len: t[3], art: makeCover(t[2], t[4], t[5]) };
+  });
+
+  // ---- playback core ---------------------------------------------------
+  var core = {
+    hosts: [], np: 4, time: 12, playing: true, paused: false,
+    volume: -6, order: 0, sel: {}, focus: 4,
+    handle: function () { return ITEMS[this.np]; },
+    each: function (name, arg) {
+      for (var i = 0; i < this.hosts.length; i++) {
+        var h = this.hosts[i].api;
+        if (h[name]) { try { h[name](arg); } catch (e) { console.error(e); } }
+      }
+    },
+    dirty: function () { for (var i = 0; i < this.hosts.length; i++) this.hosts[i].dirty = true; },
+    play: function (i) {
+      this.np = i; this.time = 0; this.playing = true; this.paused = false;
+      this.each('on_playback_new_track', ITEMS[i]);
+      this.dirty(); syncBar();
+    },
+    step: function (d) {
+      var n = this.order >= 3
+        ? Math.floor(Math.random() * ITEMS.length)
+        : (this.np + d + ITEMS.length) % ITEMS.length;
+      this.play(n);
+    }
+  };
+  core.sel[4] = true;
+
+  var fb = {
+    get IsPlaying() { return core.playing; },
+    get IsPaused() { return core.paused; },
+    get PlaybackTime() { return core.time; },
+    set PlaybackTime(v) { core.time = Math.max(0, v); core.each('on_playback_seek'); core.dirty(); },
+    get PlaybackLength() { return core.handle().len; },
+    get Volume() { return core.volume; },
+    set Volume(v) { core.volume = v; core.each('on_volume_change'); core.dirty(); },
+    get PlaybackOrder() { return core.order; },
+    set PlaybackOrder(v) { core.order = v; core.dirty(); },
+    Play: function () { core.playing = true; core.paused = false; core.dirty(); syncBar(); },
+    Stop: function () { core.playing = false; core.paused = false; core.each('on_playback_stop', 0); syncBar(); },
+    PlayOrPause: function () {
+      if (!core.playing) { core.playing = true; core.paused = false; }
+      else core.paused = !core.paused;
+      core.each('on_playback_pause'); core.dirty(); syncBar();
+    },
+    Prev: function () { core.step(-1); },
+    Next: function () { core.step(1); },
+    GetNowPlaying: function () { return core.playing ? core.handle() : null; },
+    RunMainMenuCommand: function () {},
+    TitleFormat: function (f) {
+      return {
+        EvalWithMetadb: function (h) {
+          if (!h) return '';
+          if (f.indexOf('%title%') >= 0) return h.title;
+          if (f.indexOf('%artist%') >= 0) return h.artist;
+          if (f.indexOf('%album artist%') >= 0) return h.album;
+          if (f.indexOf('%album%') >= 0) return h.album;
+          if (f.indexOf('%length%') >= 0) {
+            var m = Math.floor(h.len / 60), s = h.len % 60;
+            return m + ':' + (s < 10 ? '0' + s : s);
+          }
+          return '';
+        },
+        Eval: function () { return ''; }
+      };
+    },
+    CreateContextMenuManager: function () {
+      return { InitContext: function () {}, BuildMenu: function () {},
+               ExecuteByID: function () {}, Dispose: function () {} };
+    }
+  };
+
+  var plman = {
+    ActivePlaylist: 0, PlayingPlaylist: 0,
+    GetPlaylistItems: function () {
+      return { Count: ITEMS.length, Item: function (i) { return ITEMS[i]; } };
+    },
+    GetPlaylistName: function () { return '보관함'; },
+    GetPlaylistItemCount: function () { return ITEMS.length; },
+    GetPlayingItemLocation: function () {
+      return { IsValid: core.playing, PlaylistIndex: 0, PlaylistItemIndex: core.np };
+    },
+    IsPlaylistItemSelected: function (p, i) { return !!core.sel[i]; },
+    ClearPlaylistSelection: function () { core.sel = {}; core.dirty(); },
+    SetPlaylistSelectionSingle: function (p, i, state) { core.sel[i] = state; core.dirty(); },
+    SetPlaylistSelection: function (p, list, state) {
+      for (var i = 0; i < list.length; i++) core.sel[list[i]] = state;
+      core.dirty();
+    },
+    SetPlaylistFocusItem: function (p, i) { core.focus = i; core.dirty(); },
+    GetPlaylistFocusItemIndex: function () { return core.focus; },
+    GetPlaylistSelectedItems: function () { return { Count: 0, Item: function () { return null; } }; },
+    ExecutePlaylistDefaultAction: function (p, i) { core.play(i); }
+  };
+
+  var utils = {
+    CheckFont: function (n) { return n === 'SF Pro Display'; },
+    GetAlbumArtV2: function (h) { return h ? h.art : null; }
+  };
+
+  // ---- one panel per canvas -------------------------------------------
+  var toastEl = null;
+  function toast(msg) {
+    if (!toastEl) {
+      toastEl = document.createElement('div');
+      toastEl.setAttribute('style', 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);' +
+        'background:#1a171b;color:#f2eef0;font:500 13px/1.4 var(--sans);padding:10px 18px;border-radius:999px;' +
+        'box-shadow:0 10px 30px -10px rgba(0,0,0,.6);z-index:9;pointer-events:none;opacity:0;transition:opacity .2s');
+      document.body.appendChild(toastEl);
+    }
+    toastEl.textContent = msg;
+    toastEl.style.opacity = '1';
+    clearTimeout(toastEl.__t);
+    toastEl.__t = setTimeout(function () { toastEl.style.opacity = '0'; }, 2600);
+  }
+
+  function makeHost(canvas, mode) {
+    var ctx = canvas.getContext('2d');
+    var gfx = new Gfx(ctx);
+    var w = 10, h = 10, timers = [], props = {};
+    props['Apple Music.Mode (auto|player|bar|list)'] = mode;
+    props['Apple Music.Theme (dark|light)'] = 'dark';
+
+    var win = {
+      get Width() { return w; },
+      get Height() { return h; },
+      GetProperty: function (n, d) { return props.hasOwnProperty(n) ? props[n] : d; },
+      SetProperty: function (n, v) { props[n] = v; },
+      Repaint: function () { host.dirty = true; },
+      RepaintRect: function () { host.dirty = true; },
+      SetInterval: function (fn, ms) { timers.push({ fn: fn, ms: ms, acc: 0 }); return timers.length; },
+      ClearInterval: function () {},
+      SetCursor: function (id) { canvas.style.cursor = id === 32649 ? 'pointer' : 'default'; },
+      DlgCode: function () {},
+      ShowProperties: function () { toast('실제 foobar2000에서는 여기서 패널 속성 창이 열립니다'); },
+      ShowConfigure: function () { toast('실제 foobar2000에서는 여기서 스크립트 편집기가 열립니다'); },
+      CreatePopupMenu: function () {
+        return { AppendMenuItem: function () {}, AppendMenuSeparator: function () {},
+                 AppendTo: function () {}, CheckMenuRadioItem: function () {},
+                 TrackPopupMenu: function () { return 0; }, Dispose: function () {} };
+      }
+    };
+
+    var api = makePanel(win, fb, gdi, utils, plman, console);
+    var host = { api: api, dirty: true, timers: timers, canvas: canvas, mode: mode,
+                 paint: function () { api.on_paint(gfx); } };
+
+    function resize() {
+      var r = canvas.getBoundingClientRect();
+      if (r.width < 2 || r.height < 2) return;
+      w = Math.round(r.width); h = Math.round(r.height);
+      canvas.width = Math.round(w * DPR); canvas.height = Math.round(h * DPR);
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      api.on_size();
+      host.dirty = true;
+    }
+    new ResizeObserver(resize).observe(canvas);
+    resize();
+
+    function mask(e) { return (e.shiftKey ? 4 : 0) | (e.ctrlKey || e.metaKey ? 8 : 0); }
+    var down = false;
+    canvas.addEventListener('mousemove', function (e) { api.on_mouse_move(e.offsetX, e.offsetY, mask(e) | (down ? 1 : 0)); });
+    canvas.addEventListener('mouseleave', function () { if (!down) api.on_mouse_leave(); });
+    canvas.addEventListener('mousedown', function (e) {
+      if (e.button !== 0) return;
+      down = true; api.on_mouse_lbtn_down(e.offsetX, e.offsetY, mask(e));
+    });
+    window.addEventListener('mouseup', function (e) {
+      if (!down) return;
+      down = false;
+      var r = canvas.getBoundingClientRect();
+      api.on_mouse_lbtn_up(e.clientX - r.left, e.clientY - r.top, 0);
+    });
+    canvas.addEventListener('dblclick', function (e) { api.on_mouse_lbtn_dblclk(e.offsetX, e.offsetY, mask(e)); });
+    canvas.addEventListener('contextmenu', function (e) {
+      e.preventDefault();
+      toast('우클릭 메뉴는 foobar2000에서 열립니다 — 테마·모드 전환이 들어 있습니다');
+    });
+    canvas.addEventListener('wheel', function (e) {
+      var p = api.getPanel();
+      var grab = mode === 'list' || (p && (p.hover === 'seek' || p.hover === 'vol'));
+      if (!grab) return;                       // otherwise let the page scroll
+      e.preventDefault();
+      api.on_mouse_wheel(e.deltaY > 0 ? -1 : 1);
+    }, { passive: false });
+
+    core.hosts.push(host);
+    return host;
+  }
+
+  // ---- page chrome -----------------------------------------------------
+  var nowText = document.getElementById('now-text');
+  var beat = document.getElementById('beat');
+  var playBtn = document.getElementById('toggle-play');
+  var lastLabel = '';
+
+  function syncBar() {
+    var t = core.handle();
+    var label = t.artist + ' — ' + t.title;
+    if (label !== lastLabel) { nowText.textContent = label; lastLabel = label; }
+    var live = core.playing && !core.paused;
+    playBtn.textContent = live ? '일시정지' : '재생';
+    beat.style.opacity = live ? '1' : '.25';
+  }
+  playBtn.addEventListener('click', function () { fb.PlayOrPause(); });
+
+  var win = document.getElementById('win');
+  var skinDark = document.getElementById('skin-dark'), skinLight = document.getElementById('skin-light');
+  function setSkin(name) {
+    win.setAttribute('data-skin', name);
+    skinDark.setAttribute('aria-pressed', String(name === 'dark'));
+    skinLight.setAttribute('aria-pressed', String(name === 'light'));
+    for (var i = 0; i < core.hosts.length; i++) core.hosts[i].api.applyTheme(name);
+    core.dirty();
+  }
+  skinDark.addEventListener('click', function () { setSkin('dark'); });
+  skinLight.addEventListener('click', function () { setSkin('light'); });
+
+  makeHost(document.getElementById('cv-bar'), 'bar');
+  makeHost(document.getElementById('cv-player'), 'player');
+  makeHost(document.getElementById('cv-list'), 'list');
+  core.each('on_playback_new_track', core.handle());
+
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    core.paused = true;
+  }
+  syncBar();
+
+  // ---- frame loop ------------------------------------------------------
+  var last = performance.now(), secAcc = 0;
+  function frame(now) {
+    var dt = Math.min(100, now - last); last = now;
+    if (core.playing && !core.paused) {
+      core.time += dt / 1000;
+      secAcc += dt;
+      if (secAcc >= 1000) { secAcc = 0; core.each('on_playback_time'); }
+      if (core.time >= core.handle().len) core.step(1);
+    }
+    for (var i = 0; i < core.hosts.length; i++) {
+      var host = core.hosts[i];
+      for (var t = 0; t < host.timers.length; t++) {
+        var tm = host.timers[t];
+        tm.acc += dt;
+        while (tm.acc >= tm.ms) { tm.acc -= tm.ms; try { tm.fn(); } catch (e) {} }
+      }
+      if (host.dirty) { host.dirty = false; try { host.paint(); } catch (e) { console.error(e); } }
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
