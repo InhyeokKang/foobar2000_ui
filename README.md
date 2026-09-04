@@ -216,7 +216,11 @@ foobar2000의 **UI 모듈 자체를 교체**하는 공식 확장입니다.
 | **UI 모듈 전환** | `Preferences` → `Display` → 맨 위 `User interface module` 드롭다운에서 **Columns UI** |
 | **상태바 끄기** | `Display` → `Columns UI` → `Status bar` 탭 → **`Show status bar`** 체크 해제 |
 | **툴바 끄기** | `Display` → `Columns UI` → `Main window` 탭 → **`Show toolbars`** |
+| **하단 정보 띠 끄기** | `Display` → `Columns UI` → `Status pane` 탭 → **`Show status pane`** |
 | **패널 배치** | `Display` → `Columns UI` → **`Layout`** (트리에서 우클릭) |
+
+> **툴바를 끄면 메뉴바도 함께 사라집니다.** 설정은 **`Ctrl+P`** 로 열면 되고,
+> 패널 우클릭의 `foobar2000 메뉴`에도 File/Edit/View/Playback/Library가 다 들어 있습니다.
 
 ### 레이아웃 잡기
 
@@ -228,7 +232,10 @@ Row
 └ Column → Playlist view       ← 기본 재생목록
 ```
 
-화면에도 적혀 있듯 **트리에서 우클릭**해서 바꿉니다. DUI와 달리 `Replace`가 없고
+이 트리는 `Layout` **페이지 안의 박스**입니다. 왼쪽 설정 트리에도 `Playlist switcher` /
+`Playlist view`라는 **같은 이름**이 있는데 그건 설정 페이지일 뿐이니 헷갈리지 마세요.
+
+화면에도 적혀 있듯 **박스 안의 항목에서 우클릭**해서 바꿉니다. DUI와 달리 `Replace`가 없고
 `Add` / `Remove` 방식입니다. DLL에서 확인한 메뉴 항목: `Add before`, `Add after`,
 `Add child`, `Remove`, `Copy`, `Paste`.
 
