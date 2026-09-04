@@ -523,6 +523,8 @@ var SVG = {
            '<path d="M4 7h11"/><path d="M4 12h11"/><path d="M4 17h7"/></g>' +
            '<path d="M17.6 13.5 L21 16 L17.6 18.5 Z" fill="%C%"/>',
 
+    caret: '<path d="M8.8 10.6 L12 13.9 L15.2 10.6 Z" fill="%C%"/>',
+
     gear: '<g fill="none" stroke="%C%" stroke-width="2.1" stroke-linecap="round"><path d="M18.20 12.00L21.00 12.00"/><path d="M16.38 16.38L18.36 18.36"/><path d="M12.00 18.20L12.00 21.00"/><path d="M7.62 16.38L5.64 18.36"/><path d="M5.80 12.00L3.00 12.00"/><path d="M7.62 7.62L5.64 5.64"/><path d="M12.00 5.80L12.00 3.00"/><path d="M16.38 7.62L18.36 5.64"/></g><circle cx="12" cy="12" r="6.2" fill="none" stroke="%C%" stroke-width="1.8"/><circle cx="12" cy="12" r="2.5" fill="none" stroke="%C%" stroke-width="1.8"/>'
 };
 
@@ -1243,7 +1245,9 @@ BottomBar.prototype.slider = function (gr, rc, ratio, hovered, colour) {
 };
 
 BottomBar.prototype.paint = function (gr) {
-    if (!this.embedded) gr.FillRectangle(this.ox, this.oy, this.W, this.H, colours.bg);
+    // always opaque: the list's last row can reach past its own box, and this
+    // band is where the page's blur has already faded to the flat background
+    gr.FillRectangle(this.ox, this.oy, this.W, this.H, colours.bg);
     gr.FillRectangle(this.ox, this.oy, this.W, 1, colours.line);
 
     var c = this.chip, rc = this.rcArt, playing = !!this.metadb;
@@ -1252,11 +1256,20 @@ BottomBar.prototype.paint = function (gr) {
         fillRound(gr, rc.x, rc.y, rc.w, rc.h, px(8), colours.bg);
         drawIcon(gr, 'note', rc.x + rc.w / 2, rc.y + rc.h / 2, rc.w * 0.5, colours.faint);
     }
-    var tx = rc.x + rc.w + px(9), tw = c.x + c.w - px(9) - tx;
-    drawText(gr, playing ? evalTf(tf.title, this.metadb) : '재생 중인 항목 없음',
-        fonts.small, colours.text, tx, c.y + px(6), tw, px(15), TEXT_LEFT);
-    drawText(gr, playing ? evalTf(tf.artist, this.metadb) : '',
-        fonts.tiny, colours.sub, tx, c.y + c.h - px(19), tw, px(14), TEXT_LEFT);
+    var tx = rc.x + rc.w + px(9);
+    var tw = c.x + c.w - px(24) - tx;
+    var name = '', count = 0;
+    try {
+        var pl = plman.ActivePlaylist;
+        name = pl >= 0 ? plman.GetPlaylistName(pl) : '';
+        count = pl >= 0 ? plman.GetPlaylistItemCount(pl) : 0;
+    } catch (e) {}
+    drawText(gr, name || '재생목록', fonts.small,
+        this.hover === 'chip' ? colours.sub : colours.text,
+        tx, c.y + px(6), tw, px(15), TEXT_LEFT);
+    drawText(gr, count + '곡', fonts.tiny, colours.sub,
+        tx, c.y + c.h - px(19), tw, px(14), TEXT_LEFT);
+    drawIcon(gr, 'caret', c.x + c.w - px(13), c.y + c.h / 2, px(15), colours.faint);
 
     var ratio = this.seekRatio(), len = fb.PlaybackLength;
     this.slider(gr, this.rcSeek, ratio, this.hover === 'seek' || this.dragSeek, colours.ink);
@@ -1299,7 +1312,7 @@ BottomBar.prototype.move = function (x, y) {
     var h = this.hitTest(x, y);
     if (h !== this.hover) {
         this.hover = h;
-        window.SetCursor(h && h !== 'chip' ? IDC_HAND : IDC_ARROW);
+        window.SetCursor(h ? IDC_HAND : IDC_ARROW);
         window.Repaint();
     }
 };
@@ -1319,6 +1332,10 @@ BottomBar.prototype.down = function (x, y) {
 };
 
 BottomBar.prototype.up = function (x, y) {
+    if (!this.dragSeek && !this.dragVol && inRect(this.chip, x, y)) {
+        showPlaylistMenu(x, y);
+        return;
+    }
     if (this.dragSeek) {
         this.dragSeek = false;
         var len = fb.PlaybackLength;
@@ -1574,6 +1591,26 @@ function openPreferences(x, y) {
 }
 
 // Just the playlists, for the top bar and the queue buttons.
+// Asks for a name, creates the playlist and switches to it. The new one is
+// empty, so dropping files straight in will start playing them.
+function createPlaylist() {
+    var name;
+    try {
+        name = utils.InputBox('새 재생목록 이름', 'Studio Player', '새 재생목록', true);
+    } catch (e) { return -1; }                 // cancelled
+    name = ('' + name).replace(/^\s+|\s+$/g, '');
+    if (!name) return -1;
+    try {
+        var idx = plman.CreatePlaylist(plman.PlaylistCount, name);
+        plman.ActivePlaylist = idx;
+        window.Repaint();
+        return idx;
+    } catch (e) {
+        console.log('Studio: 재생목록을 만들지 못했습니다 - ' + e);
+        return -1;
+    }
+}
+
 function showPlaylistMenu(x, y) {
     var menu = null;
     try {
@@ -1581,12 +1618,16 @@ function showPlaylistMenu(x, y) {
         var n = plman.PlaylistCount, active = plman.ActivePlaylist;
         for (var i = 0; i < n; i++) {
             menu.AppendMenuItem(MF_STRING, 100 + i,
-                plman.GetPlaylistName(i) + '\t' + plman.GetPlaylistItemCount(i));
+                plman.GetPlaylistName(i) + '\t' + plman.GetPlaylistItemCount(i) + '곡');
         }
-        if (n > 0) menu.CheckMenuRadioItem(100, 100 + n - 1, 100 + active);
-        else menu.AppendMenuItem(MF_STRING, 1, '(재생목록 없음)');
+        if (n > 0) {
+            menu.CheckMenuRadioItem(100, 100 + n - 1, 100 + active);
+            menu.AppendMenuSeparator();
+        }
+        menu.AppendMenuItem(MF_STRING, 1, '＋  새 재생목록…');
         var id = menu.TrackPopupMenu(x, y);
-        if (id >= 100 && id < 100 + n) plman.ActivePlaylist = id - 100;
+        if (id === 1) createPlaylist();
+        else if (id >= 100 && id < 100 + n) plman.ActivePlaylist = id - 100;
         return true;
     } catch (e) {
         console.log('Studio menu: ' + e);
@@ -1985,6 +2026,13 @@ return {
       return c.measureText('' + text).width;
     },
     FormatDuration: function (s) { return '' + s; },
+    IsKeyPressed: function () { return false; },
+    InputBox: function (prompt, title, def, err) {
+      var v = null;
+      try { v = window.prompt(prompt, def || ''); } catch (e) { v = def || ''; }
+      if (v === null) { if (err) throw new Error('cancelled'); return def; }
+      return v;
+    },
     // Rasterises the SVG asynchronously; the panel repaints when it lands.
     LoadSVG: function (xml, maxWidth) {
       var size = maxWidth || 24;
