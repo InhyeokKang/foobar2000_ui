@@ -228,15 +228,28 @@ if ($SkipComponent) {
 } else {
     $pkg = Find-Component
     if (-not $pkg) {
-        Say '   컴포넌트 파일이 없어 다운로드 페이지를 엽니다.' Yellow
-        Say '   내려받은 뒤 이 창으로 돌아오면 자동으로 이어집니다.' DarkGray
-        Say '   (페이지가 안 열리거나 없어졌다면 hydrogenaudio 위키에서 JScript Panel 3을 검색하세요)' DarkGray
-        Start-Process 'https://github.com/jscript-panel/release/releases'
-        Say '   기다리는 중... 최대 5분, 중단하려면 Ctrl+C' DarkGray
-        $deadline = (Get-Date).AddMinutes(5)
-        while (-not $pkg -and (Get-Date) -lt $deadline) {
-            Start-Sleep -Seconds 2
-            $pkg = Find-Component
+        # 원저작자(marc2003)가 GitHub 저장소를 내려서 공식 배포처가 없다.
+        # 아래는 커뮤니티 미러이며, 내려받은 뒤 해시를 대조한다.
+        $mirror = 'https://raw.githubusercontent.com/Dronf3/JScript-Panel-3---foobar2k/main/foo_jscript_panel3-3.4.34.fb2k-component'
+        $expect = '70B6B258081BAF05D0181AA8F5382902D6FA5440DF1C80CDD599D3F79C9C906E'
+        $target = Join-Path $env:TEMP 'foo_jscript_panel3-3.4.34.fb2k-component'
+        Say '   공식 배포처가 사라져 커뮤니티 미러에서 받습니다.' Yellow
+        Say '   받은 뒤 SHA-256을 대조합니다.' DarkGray
+        try {
+            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+            Invoke-WebRequest -Uri $mirror -OutFile $target -UseBasicParsing -TimeoutSec 180
+            $hash = (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash
+            if ($hash -eq $expect) {
+                Say "   해시 일치 ($($hash.Substring(0,16))...)" Green
+                $pkg = $target
+            } else {
+                Say '   해시가 다릅니다. 파일을 신뢰할 수 없어 설치하지 않습니다.' Red
+                Say "   기대: $expect" DarkGray
+                Say "   실제: $hash" DarkGray
+                Remove-Item $target -Force -ErrorAction SilentlyContinue
+            }
+        } catch {
+            Say "   내려받기 실패: $($_.Exception.Message)" Yellow
         }
     }
     if ($pkg) {

@@ -60,9 +60,14 @@ foobar2000 기본 UI를 Apple Music처럼 바꿔주는 패널 스크립트입니
 ## 1. 준비물
 
 1. **foobar2000 v2.x** — [foobar2000.org](https://www.foobar2000.org/download)
-2. **JScript Panel 3** (`foo_jscript_panel3`) — [github.com/jscript-panel/release](https://github.com/jscript-panel/release/releases)
-   (링크가 죽어 있으면 HydrogenAudio 위키에서 `JScript Panel 3` 검색)
-   - 하나의 파일이 32·64비트를 모두 담고 있습니다.
+2. **JScript Panel 3** (`foo_jscript_panel3`) — ⚠️ **공식 배포처가 사라졌습니다.**
+   원저작자(marc2003)가 GitHub 저장소를 삭제해서 `jscript-panel/release`,
+   `marc2k3/jscript-panel` 모두 404입니다. 현재는 커뮤니티 미러가 유일한 경로입니다:
+   [Dronf3/JScript-Panel-3---foobar2k](https://github.com/Dronf3/JScript-Panel-3---foobar2k)
+   (`foo_jscript_panel3-3.4.34.fb2k-component`, SHA-256
+   `70b6b258081baf05d0181aa8f5382902d6fa5440df1c80cdd599d3f79c9c906e`)
+   - 파일 하나에 32·64비트 DLL이 모두 들어 있습니다.
+   - `install.bat`은 이 파일을 받은 뒤 위 해시와 대조하고, 다르면 설치를 중단합니다.
    - 설치: foobar2000 → `File` → `Preferences` → `Components` → `Install...` → 받은 `.fb2k-component` 선택 → `Apply` → 재시작
 3. (선택) **Columns UI** (`foo_ui_columns`) — 패널을 자유롭게 배치하고 싶다면 추천
 
