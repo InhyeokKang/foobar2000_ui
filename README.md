@@ -49,11 +49,14 @@ foobar2000 기본 UI를 Apple Music처럼 바꿔주는 패널 스크립트입니
 패널 **배치**는 foobar2000 프로필 안에 바이너리 설정으로 저장돼서, 설치기가 밖에서
 만들어 넣을 수 없습니다. 그래서 이것만 직접 하셔야 합니다 (설치기가 끝나면서 그대로 안내합니다):
 
-1. `View` → `Layout` → `Enable layout editing` 체크
+1. `View` → `Layout` → **`Enable layout editing mode`**
+   (같은 항목이 `Preferences` → `Display` → `Default User Interface`에 체크박스로도 있습니다)
 2. **재생목록이 있는 큰 영역**에서 우클릭 → `Replace UI Element...` → **JScript Panel**
    (Default UI를 처음 열면 이 영역 하나뿐입니다. 그게 맞습니다 — 쪼갤 필요 없습니다)
 3. 그 패널 우클릭 → `Configure...` → 내용 전부 지우고 **Ctrl+V** → `Apply`
-   → `Enable layout editing` 다시 해제
+   → `Enable layout editing mode` 다시 해제
+
+> foobar2000 v2.24에서 확인한 경로입니다.
 
 이러면 그 패널 하나가 상단 바 + 나우플레잉 + 트랙 리스트를 전부 그립니다.
 
@@ -64,8 +67,10 @@ foobar2000 기본 UI를 Apple Music처럼 바꿔주는 패널 스크립트입니
 
 ### 한 번 하면 다음부터는 정말 원클릭
 
-배치가 마음에 들면 `File` → `Preferences` → `Display` → `Default User Interface` →
-**`Export theme...`** 로 `.fth` 파일을 뽑아 이 폴더에 두세요.
+배치가 마음에 들면 `Preferences` → `Display` → `Default User Interface` 페이지
+오른쪽 위 **`Export Theme`** 버튼으로 `.fth` 파일을 뽑아 이 폴더에 두세요.
+(같은 자리에 `Import Theme`, `Quick Setup` 버튼과 `Enable layout editing mode`
+체크박스가 함께 있습니다)
 
 `.fth`에는 레이아웃뿐 아니라 **각 패널의 설정(=스크립트 본문)까지 통째로** 들어갑니다.
 그래서 이 파일이 폴더에 있으면 설치기가 알아서 감지하고, 다음 설치부터는 위 3단계 대신
@@ -99,9 +104,9 @@ foobar2000 기본 UI를 Apple Music처럼 바꿔주는 패널 스크립트입니
 ## 2. 패널 만들기
 
 ### Default UI를 쓰는 경우
-1. `View` → `Layout` → `Enable layout editing` 체크
+1. `View` → `Layout` → **`Enable layout editing mode`**
 2. 바꾸고 싶은 영역에서 **우클릭** → `Replace UI Element...` → `JScript Panel`
-3. 다시 `Enable layout editing` 해제
+3. 다시 `Enable layout editing mode` 해제
 
 ### Columns UI를 쓰는 경우
 1. `File` → `Preferences` → `Display` → `Columns UI` → `Layout` 탭
@@ -198,8 +203,10 @@ Apple Music처럼 보이게 하려면 패널 밖의 요소도 정리하면 좋�
   `#FFFFFF`(라이트)로 맞추면 패널 경계가 보이지 않습니다.
 - 남아 있는 상단 툴바(재생 버튼·탐색바)는 툴바 영역에서 우클릭하면 켜고 끌 수 있습니다.
   스크립트가 같은 기능을 이미 그리므로 꺼도 됩니다.
-- 상태바·탭 바를 끄는 항목의 위치는 foobar2000 버전마다 다릅니다. 패널 우클릭 →
-  **foobar2000 메뉴** 에서 자기 설치본의 실제 메뉴를 열어 확인하세요.
+- **상태바는 v2.24의 `View` 메뉴에 토글이 없습니다.** (View에는 Always on Top /
+  Visualizations / DSP / Console / Internet Radio / Playlist Manager / Layout 뿐)
+  `Preferences` → `Display` → `Default User Interface`에도 상태바의 *내용* 서식만 있고
+  표시 여부 옵션은 없습니다. 끄는 방법은 아직 확인하지 못했습니다.
 - Columns UI 사용 시 `Preferences` → `Display` → `Columns UI` → `Main`에서
   Toolbar/Status bar를 모두 끄면 창 전체가 패널만 남습니다.
 - Windows 11의 둥근 창 모서리 + 다크 타이틀바와 잘 어울립니다.

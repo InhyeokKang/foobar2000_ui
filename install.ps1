@@ -275,17 +275,17 @@ Write-Host '  남은 단계' -ForegroundColor White
 if ($fth) {
     Say "   테마 파일이 있습니다: $($fth.Name)" Green
     Say '   1) foobar2000 재시작' 
-    Say '   2) File > Preferences > Display > Default User Interface'
-    Say "   3) [Import theme...] 에서 $($fth.Name) 선택 -> 끝"
+    Say '   2) Preferences > Display > Default User Interface'
+    Say "   3) [Import Theme] 버튼에서 $($fth.Name) 선택 -> 끝"
 } else {
     Say '   1) foobar2000 재시작 (컴포넌트를 방금 설치했다면)'
-    Say '   2) View > Layout > Enable layout editing 체크'
+    Say '   2) View > Layout > Enable layout editing mode'
     Say '   3) 원하는 영역 우클릭 > Replace UI Element... > JScript Panel'
     Say '   4) 그 패널 우클릭 > Configure... > 내용 전부 지우고 Ctrl+V > Apply'
     Say '   5) 패널 우클릭 > 패널 모드 에서 플레이어 / 바 / 재생목록 선택'
     Write-Host ''
     Say '   이 배치가 마음에 들면, 나중에 다시 깔 때를 위해' DarkGray
-    Say '   Preferences > Display > Default User Interface > [Export theme...] 로' DarkGray
+    Say '   Preferences > Display > Default User Interface 의 [Export Theme] 버튼으로' DarkGray
     Say '   .fth 파일을 뽑아 이 폴더에 두세요. 다음부터는 위 3~5단계가 사라집니다.' DarkGray
 }
 Write-Host ''
