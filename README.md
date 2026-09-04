@@ -19,11 +19,50 @@ foobar2000 기본 UI를 Apple Music처럼 바꿔주는 패널 스크립트입니
 
 ---
 
+## 원클릭 설치
+
+저장소를 [ZIP으로 받아](https://github.com/InhyeokKang/foobar2000_ui/archive/refs/heads/main.zip)
+압축을 풀고 **`install.bat`** 을 두 번 누르세요. 관리자 권한은 필요 없습니다.
+
+설치기가 자동으로 하는 일:
+
+1. foobar2000 설치 위치와 프로필 폴더를 찾습니다 (일반/포터블, 32·64비트 모두)
+2. **Pretendard** 폰트를 사용자 영역에 설치합니다
+3. `apple-music.js`를 프로필 폴더에 넣고, **내용을 클립보드에 복사**합니다
+4. **JScript Panel 3** 컴포넌트를 foobar2000 자체 설치기로 넘깁니다
+   (없으면 다운로드 페이지를 열고, 받을 때까지 기다렸다가 이어서 진행)
+
+지우거나 덮어쓰는 파일은 없고, 단계별로 실패해도 나머지는 계속 진행합니다.
+
+### 그래도 남는 3단계
+
+패널 **배치**는 foobar2000 프로필 안에 바이너리 설정으로 저장돼서, 설치기가 밖에서
+만들어 넣을 수 없습니다. 그래서 이것만 직접 하셔야 합니다 (설치기가 끝나면서 그대로 안내합니다):
+
+1. `View` → `Layout` → `Enable layout editing` 체크
+2. 원하는 영역 우클릭 → `Replace UI Element...` → **JScript Panel**
+3. 그 패널 우클릭 → `Configure...` → 내용 전부 지우고 **Ctrl+V** → `Apply`
+
+### 한 번 하면 다음부터는 정말 원클릭
+
+배치가 마음에 들면 `File` → `Preferences` → `Display` → `Default User Interface` →
+**`Export theme...`** 로 `.fth` 파일을 뽑아 이 폴더에 두세요.
+
+`.fth`에는 레이아웃뿐 아니라 **각 패널의 설정(=스크립트 본문)까지 통째로** 들어갑니다.
+그래서 이 파일이 폴더에 있으면 설치기가 알아서 감지하고, 다음 설치부터는 위 3단계 대신
+`Import theme...` **한 번**으로 끝납니다. 다른 PC에 옮길 때도 마찬가지입니다.
+
+> 단, 테마를 불러오기 전에 JScript Panel 3 컴포넌트는 반드시 먼저 설치되어 있어야 합니다.
+> 없으면 패널 자리가 빈 칸으로 들어옵니다. (설치기가 순서를 맞춰 줍니다)
+
+---
+
 ## 1. 준비물
 
 1. **foobar2000 v2.x** — [foobar2000.org](https://www.foobar2000.org/download)
 2. **JScript Panel 3** (`foo_jscript_panel3`) — [github.com/jscript-panel/release](https://github.com/jscript-panel/release/releases)
-   - foobar2000 **32비트/64비트 버전에 맞는 파일**을 받으세요.
+   (링크가 죽어 있으면 HydrogenAudio 위키에서 `JScript Panel 3` 검색)
+   - 하나의 파일이 32·64비트를 모두 담고 있습니다.
    - 설치: foobar2000 → `File` → `Preferences` → `Components` → `Install...` → 받은 `.fb2k-component` 선택 → `Apply` → 재시작
 3. (선택) **Columns UI** (`foo_ui_columns`) — 패널을 자유롭게 배치하고 싶다면 추천
 
