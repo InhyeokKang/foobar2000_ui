@@ -17,6 +17,9 @@ foobar2000 기본 UI를 Apple Music처럼 바꿔주는 패널 스크립트입니
 다크/라이트 테마, Apple Music 시그니처 레드(`#FA243C`) 액센트, 라운드 코너 앨범아트,
 호버 하이라이트, 재생 중 트랙의 이퀄라이저 애니메이션까지 들어 있습니다.
 
+아이콘은 폰트 글리프가 아니라 **SVG**입니다. JScript Panel 3에 내장된 resvg가 그리므로
+아이콘 폰트를 따로 깔 필요가 없고, 어떤 배율에서도 뭉개지지 않습니다.
+
 ---
 
 ## 원클릭 설치
@@ -71,8 +74,11 @@ foobar2000 기본 UI를 Apple Music처럼 바꿔주는 패널 스크립트입니
    - 설치: foobar2000 → `File` → `Preferences` → `Components` → `Install...` → 받은 `.fb2k-component` 선택 → `Apply` → 재시작
 3. (선택) **Columns UI** (`foo_ui_columns`) — 패널을 자유롭게 배치하고 싶다면 추천
 
-> 이 스크립트는 ES5로만 작성해서 JScript Panel 2, Spider Monkey Panel(foobar2000 v1.6)에서도 동작합니다.
-> 호스트마다 다른 API는 전부 런타임에 감지하도록 해 두었습니다.
+> **foobar2000 v2 + JScript Panel 3 전용입니다.**
+> JScript Panel 3는 Direct2D/DirectWrite로 그리기 때문에, GDI+를 쓰던 이전 세대
+> (JScript Panel 2, Spider Monkey Panel)와는 API가 호환되지 않습니다.
+> 이 스크립트는 JSP3의 API(`gr.WriteText`, `gr.FillRoundedRectangle`, `utils.LoadSVG`,
+> `handle.GetAlbumArt` 등)로 작성되어 있습니다.
 
 ## 2. 패널 만들기
 
