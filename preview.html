@@ -649,14 +649,13 @@ function getBlob(w, h) {
 
 function paintPage(gr, x, y, w, h) {
     gr.FillRectangle(x, y, w, h, colours.bg);
-    var bw = Math.round(window.Width), bh = Math.round(window.Height * 0.55);
-    var img = getBlob(bw, bh);
-    if (img && y < bh) {
-        var vh = Math.min(h, bh - y);
-        gr.DrawImage(img, x, y, w, vh, x, y, w, vh, colours.blob);
-        gr.FillRectangle(x, y, w, vh,
-            grad(0, y, 0, y + vh, setAlpha(colours.bg, 90), colours.bg));
-    }
+    var W = Math.round(window.Width), H = Math.round(window.Height);
+    var img = getBlob(W, H);
+    if (!img) return;
+    // src and dst share the panel's coordinates, and the fade is measured
+    // against the whole panel, so any sub-rectangle lines up with its neighbours
+    gr.DrawImage(img, x, y, w, h, x, y, w, h, colours.blob);
+    gr.FillRectangle(x, y, w, h, grad(0, 0, 0, H, setAlpha(colours.bg, 30), colours.bg));
 }
 
 // -------------------------------------------------------- TRANSPORT STATE ---
@@ -845,7 +844,7 @@ ArtCard.prototype.setViewport = function (x, y, w, h) {
 };
 
 ArtCard.prototype.paint = function (gr) {
-    paintPage(gr, this.ox, this.oy, this.W, this.H);
+    if (!this.embedded) paintPage(gr, this.ox, this.oy, this.W, this.H);
     var c = this.card, rc = this.rcArt;
     card(gr, c.x, c.y, c.w, c.h, px(18));
     if (!drawArt(gr, this.art(rc.w), rc.x, rc.y, rc.w, px(12))) {
@@ -950,7 +949,7 @@ TrackList.prototype.rowAt = function (y) {
 
 TrackList.prototype.paint = function (gr) {
     var x0 = this.ox, y0 = this.oy, W = this.W, H = this.H;
-    paintPage(gr, x0, y0, W, H);
+    if (!this.embedded) paintPage(gr, x0, y0, W, H);
 
     if (this.headerH) {
         drawText(gr, this.name || '재생목록', fonts.display, colours.text,
@@ -976,7 +975,7 @@ TrackList.prototype.paint = function (gr) {
         var fade = Math.min(px(46), this.view / 3);
         if (this.maxScroll() - this.scroll > 1) {
             gr.FillRectangle(x0, y0 + H - fade, W, fade,
-                grad(0, y0 + H - fade, 0, y0 + H, setAlpha(colours.bg, 0), colours.bg));
+                grad(0, y0 + H - fade, 0, y0 + H, setAlpha(colours.bg, 0), setAlpha(colours.bg, 235)));
         }
     }
 
@@ -1244,7 +1243,7 @@ BottomBar.prototype.slider = function (gr, rc, ratio, hovered, colour) {
 };
 
 BottomBar.prototype.paint = function (gr) {
-    gr.FillRectangle(this.ox, this.oy, this.W, this.H, colours.bg);
+    if (!this.embedded) gr.FillRectangle(this.ox, this.oy, this.W, this.H, colours.bg);
     gr.FillRectangle(this.ox, this.oy, this.W, 1, colours.line);
 
     var c = this.chip, rc = this.rcArt, playing = !!this.metadb;
@@ -1372,6 +1371,7 @@ Composite.prototype.layout = function (W, H) {
     var botH = clamp(Math.round(H * 0.11), px(52), px(72));
     var midY = topH, midH = Math.max(px(80), H - topH - botH);
 
+    this.top.embedded = this.art.embedded = this.list.embedded = this.bottom.embedded = true;
     this.top.setViewport(0, 0, W, topH);
     this.bottom.setViewport(0, H - botH, W, botH);
 
